@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import juliet
 import matplotlib.gridspec as gd
 from astropy.table import Table
+import os
 
 
 def regress(x):
@@ -13,7 +14,7 @@ def regress(x):
     return (x - np.mean(x))/np.sqrt(np.var(x))
 
 
-def single_param_decorr(tim, fl, fle, param, P, t14, T0, ecc=0., ome=90., batman=True, verbose=True, plots=True):
+def single_param_decorr(tim, fl, fle, param, plan_params, t14, verbose=True, plots=True):
     """
     This function do the transit light curve analysis with
     lightcurve decorrelation done against a given parameter.
@@ -25,13 +26,12 @@ def single_param_decorr(tim, fl, fle, param, P, t14, T0, ecc=0., ome=90., batman
         transit lightcurve data; time, flux and error in flux
     param : dict
         decorrelation parameter
-    P, t14, T0, ecc, ome : float
-        transit parameters; period, transit duration and
-        transit central time, eccentricty and argument of
-        periastron passage
-    batman : bool
-        boolean on whether to model batman or catwoman
-        default is batman model
+    plan_params : dict
+        juliet readable priors
+        juliet will identify which model (batman or catwoman)
+        is to be used
+    t14 : float
+        transit duration
     verbose : bool
         boolean on whether to print progress of analysis
         default is true
@@ -46,6 +46,8 @@ def single_param_decorr(tim, fl, fle, param, P, t14, T0, ecc=0., ome=90., batman
     tim, fl, fle : dict, dict, dict
         decorrelated transit lightcurve
     """
+    ### Essential planetary parameters
+    T0 = plan_params['t0_p1']['hyperparameters'][0]
     ### Indentify the data
     instrument = list(tim.keys())[0]
     tim, fl, fle = tim[instrument], fl[instrument], fle[instrument]
@@ -126,14 +128,10 @@ def single_param_decorr(tim, fl, fle, param, P, t14, T0, ecc=0., ome=90., batman
     mu, sig = np.median(post2), np.std(post2)
     hyper_ins[1] = [mu, sig]
     # Planetary parameters
-    if batman:
-        params_P = ['P_p1', 't0_p1', 'r1_p1', 'r2_p1', 'q1_' + instrument, 'q2_' + instrument, 'ecc_p1', 'omega_p1', 'a_p1']
-        dist_P = ['fixed', 'normal', 'uniform', 'uniform', 'uniform', 'uniform', 'fixed', 'fixed', 'loguniform']
-        hyper_P = [P, [T0, 0.1], [0.,1.], [0.,1.], [0.,1.], [0.,1.], ecc, ome, [1.,100.]]
-    else:
-        params_P = ['P_p1', 't0_p1', 'p1_p1', 'p2_p1', 'phi_p1', 'b_p1', 'q1_' + instrument, 'q2_' + instrument, 'ecc_p1', 'omega_p1', 'a_p1']
-        dist_P = ['fixed', 'normal', 'uniform', 'uniform', 'fixed', 'uniform', 'uniform', 'uniform', 'fixed', 'fixed', 'loguniform']
-        hyper_P = [P, [T0, 0.1], [0., 0.5], [0., 0.5], 90., [0., 0.5], [0., 1.], [0., 1.], ecc, ome, [1., 100.]]
+    params_P, dist_P, hyper_P = list(plan_params.keys()), [], []
+    for k in plan_params.keys():
+        dist_P.append(plan_params[k]['distribution'])
+        hyper_P.append(plan_params[k]['hyperparameters'])
     # Total priors
     params = params_P + params_ins + params_gp
     dist = dist_P + dist_ins + dist_gp
