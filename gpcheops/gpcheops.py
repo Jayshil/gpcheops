@@ -4,6 +4,7 @@ import juliet
 import matplotlib.gridspec as gd
 from astropy.table import Table
 import os
+from path import Path
 
 
 def regress(x):
@@ -14,7 +15,7 @@ def regress(x):
     return (x - np.mean(x))/np.sqrt(np.var(x))
 
 
-def single_param_decorr(tim, fl, fle, param, plan_params, t14, verbose=True, plots=True):
+def single_param_decorr(tim, fl, fle, param, plan_params, t14, out_path=os.getcwd(), save=True, verbose=True):
     """
     This function do the transit light curve analysis with
     lightcurve decorrelation done against a given parameter.
@@ -32,19 +33,30 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, verbose=True, plo
         is to be used
     t14 : float
         transit duration
+    out_path : str
+        output path of the analysed files
+        note that everything will be saved in different folders
+        which would be sub-folders of a folder called juliet
+        default is the present working directory
+    save : bool
+        boolean on whether to save decorrelated photometry
+        and plots.
+        decorrelated photometry is original photometry minus fitted gp model
+        first, second and third column contain time, flux and error in flux
+        Plots contain: 1) trend in flux with the decorrelation parameter
+        and the best fitted GP model to it. 2) Full model fitted 3) best 
+        fitted transit model.
+        default is True
     verbose : bool
         boolean on whether to print progress of analysis
         default is true
-    plots : bool
-        boolean on whether to produce various plots for analysis
-        This contains: 1) trend in flux with the decorrelation parameter
-        and the best fitted GP model to it. 2) Full model fitted 3) best 
-        fitted transit model.
     -----------
     return:
     -----------
-    tim, fl, fle : dict, dict, dict
-        decorrelated transit lightcurve
+    .dat file :
+        decorrelated photometry stored in out_folder/juliet/juliet_full_param
+    lnZ : float
+        log Bayesian evidence for the analysis
     """
     ### Essential planetary parameters
     T0 = plan_params['t0_p1']['hyperparameters'][0]
@@ -90,7 +102,8 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, verbose=True, plo
     priors = juliet.utils.generate_priors(params_gp_only, dist_gp_only, hyper_gp_only)
 
     ## Running GP only fit
-    data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=param_oot, out_folder='juliet/juliet_oot_' + nm_param)
+    data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=param_oot,\
+         out_folder=out_path + '/juliet/juliet_oot_' + nm_param)
     res_gp_only = data.fit(sampler = 'dynesty', n_live_points=500, verbose = verbose)
 
     ### Now it's time for a full fitting
@@ -140,7 +153,8 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, verbose=True, plo
     priors = juliet.utils.generate_priors(params, dist, hyper)
 
     # Running the whole fit
-    data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=param, out_folder='juliet/juliet_full_' + nm_param)
+    data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=param,\
+         out_folder=out_path + '/juliet/juliet_full_' + nm_param)
     results_full = data_full.fit(sampler = 'dynesty', n_live_points=500, verbose=True)
 
     ### Evaluating the fitted model
@@ -153,7 +167,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, verbose=True, plo
     transit_model_err = results_full.lc.model[instrument]['deterministic_errors']
 
     # Saving the decorrelation plot, if asked
-    if plots:
+    if save:
         fig = plt.figure(figsize=(16,9))
         gs = gd.GridSpec(2,1, height_ratios=[2,1])
 
@@ -174,7 +188,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, verbose=True, plo
         ax2.set_xlim(np.min(param[instrument]), np.max(param[instrument]))
 
         # Saving the figure
-        plt.savefig('juliet/juliet_full_' + nm_param + '/decorr.png')
+        plt.savefig(out_path + '/juliet/juliet_full_' + nm_param + '/decorr_' + nm_param +'.png')
         plt.close(fig)
     
     ## Sorting again in time ascending order to make lightcurve plots
@@ -198,7 +212,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, verbose=True, plo
     transit_model_err = tt3['tran_mod_err']
 
     ## Making lightcurves
-    if plots:
+    if save:
         # Full model
         fig = plt.figure(figsize=(16,9))
         gs = gd.GridSpec(2,1, height_ratios=[2,1])
@@ -219,7 +233,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, verbose=True, plo
         ax2.set_xlabel('Time (BJD)')
         ax2.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
 
-        plt.savefig('juliet/juliet_full_' + nm_param + '/full_model.png')
+        plt.savefig(out_path + '/juliet/juliet_full_' + nm_param + '/full_model_' + nm_param + '.png')
         plt.close(fig)
 
         # Only transit model
@@ -248,14 +262,154 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, verbose=True, plo
         ax2.set_xlabel('Time (BJD)')
         ax2.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
 
-        plt.savefig('juliet/juliet_full_' + nm_param + '/transit_model.png')
+        plt.savefig(out_path + '/juliet/juliet_full_' + nm_param + '/transit_model_' + nm_param + '.png')
         plt.close(fig)
 
     ## Decorrelating!!
-    tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument]
-    f1 = open('juliet/juliet_full_' + nm_param + '/' + nm_param + '_decorrelated_photometry.dat','w')
-    for i in range(len(tim[instrument])):
-        f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
-    f1.close()
+    if save:
+        tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument]
+        f1 = open(out_path + '/juliet/juliet_full_' + nm_param + '/' + nm_param + '_decorrelated_photometry.dat','w')
+        for i in range(len(tim[instrument])):
+            f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
+        f1.close()
 
     return results_full.posteriors['lnZ']
+
+
+#single_param_decorr(tim, fl, fle, param, plan_params, t14, out_path=os.getcwd(), verbose=True, plots=True)
+
+def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, out_path=os.getcwd(), verbose=True):
+    """
+    This function do the transit light curve analysis with
+    lightcurve decorrelation done against a given set of parameters.
+    For a single visit
+    (Essentially the same as single_param_decorr()) but
+    this can take multiple decorrelation vectors.
+    ------------------------------------------------------------------
+    Parameters:
+    -----------
+    tim, fl, fle : dict, dict, dict
+        transit lightcurve data; time, flux and error in flux
+    param : dict
+        decorrelation parameter
+    plan_params : dict
+        juliet readable priors
+        juliet will identify which model (batman or catwoman)
+        is to be used
+    t14 : float
+        transit duration
+    out_path : str
+        output path of the analysed files
+        note that everything will be saved in different folders
+        which would be sub-folders of a folder called juliet
+        default is the present working directory
+    verbose : bool
+        boolean on whether to print progress of analysis
+        default is true
+    plots : bool
+        boolean on whether to produce various plots for analysis
+        This contains: 1) trend in flux with the decorrelation parameter
+        and the best fitted GP model to it. 2) Full model fitted 3) best 
+        fitted transit model.
+    -----------
+    return:
+    -----------
+    .dat file :
+        decorrelated photometry stored in out_folder/juliet/juliet_full_param
+    lnZ : float
+        log Bayesian evidence for the analysis
+    """
+    ## Instrument
+    instrument = list(tim.keys())[0]
+    ### Folder to save results
+    p1 = Path(out_path + '/FINAL_ANALYSIS_' + instrument)
+    if not p1.exists():
+        os.mkdir(p1)
+    ## Decorrelation vectors
+    nms_decorr = list(params.keys())
+    lnZ = 0.
+    last_used_param = nms_decorr[0]
+    params_used = []
+    discarded_params = []
+    for i in range(len(nms_decorr)):
+        nm_decor = nms_decorr[i]
+        par_decor1 = params[nm_decor]
+        par_decor = {}
+        par_decor[nm_decor] = par_decor1
+        if len(params_used) != 0:
+            tim3, fl3, fle3 = np.loadtxt(out_path + '/juliet/juliet_full_' + last_used_param + '/' + last_used_param + '_decorrelated_photometry.dat',\
+                usecols=(0,1,2), unpack=True)
+            tim4, fl4, fle4 = {}, {}, {}
+            tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
+            ln_z = single_param_decorr(tim=tim4, fl=fl4, fle=fle4, param=par_decor,\
+                plan_params=plan_params, t14=t14, out_path=out_path, verbose=verbose, save=False)
+        else:
+            ln_z = single_param_decorr(tim=tim, fl=fl, fle=fle, param=par_decor,\
+                plan_params=plan_params, t14=t14, out_path=out_path, verbose=verbose, save=False)
+        print('-----------------------------')
+        print('The instrument is: ', instrument)
+        print('The last ln(Z) was (for the parameter ' + last_used_param + '): {:.4f}'.format(lnZ))
+        print('The new ln(Z) is: ', ln_z)
+        xx = input('Do you want to use this analysis further (Y/n)?: ')
+        if xx == 'Y' or xx == 'y':
+            lnZ = ln_z
+            last_used_param = nm_decor
+            params_used.append(nm_decor)
+            if len(params_used) == 0:
+                tim3, fl3, fle3 = np.loadtxt(out_path + '/juliet/juliet_full_' + last_used_param + '/' + last_used_param + '_decorrelated_photometry.dat',\
+                    usecols=(0,1,2), unpack=True)
+                tim4, fl4, fle4 = {}, {}, {}
+                tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
+                ln_z = single_param_decorr(tim=tim4, fl=fl4, fle=fle4, param=par_decor,\
+                    plan_params=plan_params, t14=t14, out_path=out_path, verbose=verbose, save=True)
+                os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
+                os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
+                os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
+            else:
+                ln_z = single_param_decorr(tim=tim, fl=fl, fle=fle, param=par_decor,\
+                    plan_params=plan_params, t14=t14, out_path=out_path, verbose=verbose, save=True)
+                os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
+                os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
+                os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
+        else:
+            discarded_params.append(nm_decor)
+    os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/* ' + out_path + '/FINAL_ANALYSIS_' + instrument)
+    print(' ')
+    print('---------------------------------')
+    print(' ')
+    print('     Summary of the Analysis     ')
+    print(' ')
+    print('---------------------------------')
+    print('1) Instrument used in analysis: ', instrument)
+    print('2) Inngested decorrelation parameters: ')
+    print(nms_decorr)
+    print('3) Parameter used in decorrelation:')
+    print(params_used)
+    print('4) Discarded parameters:')
+    print(discarded_params)
+    print('5) ln(Z) achieved in the analysis: ', lnZ)
+    print('6) Final analysis was saved in the folder: ')
+    print('   FINAL_ANALYSIS_' + instrument + ' folder in out_path.')
+
+
+import pycheops
+# Downloading data
+dd = pycheops.Dataset('CH_PR300024_TG000101_V0200')
+tim, fl, fle = dd.get_lightcurve(aperture='OPTIMAL', decontaminate=True)#, reject_highpoints=True)
+# To clip outliers (I would, in general, not prefer using this)
+tim, fl, fle = dd.clip_outliers(verbose=True);
+P, T0, W = 4.7362050, 0.5, 0.2974
+tim, fl, fle = dd.flatten(T0, W)
+
+tims, flx, flxe, params = {}, {}, {}, {}
+tims['CHEOPS'], flx['CHEOPS'], flxe['CHEOPS'] = tim, fl, fle
+params['ROLL'], params['CENX'], params['CENY'], params['BG'] = dd.lc['roll_angle'], dd.lc['centroid_x'], dd.lc['centroid_y'], dd.lc['bg']
+params['TIME'] = tim
+
+params_P = ['P_p1', 't0_p1', 'r1_p1', 'r2_p1', 'q1_CHEOPS', 'q2_CHEOPS', 'ecc_p1', 'omega_p1', 'a_p1']
+dist_P = ['fixed', 'normal', 'uniform', 'uniform', 'uniform', 'uniform', 'fixed', 'fixed', 'loguniform']
+hyper_P = [P, [0.5, 0.1], [0.,1.], [0.,1.], [0.,1.], [0.,1.], 0., 90., [1.,100.]]
+
+plan_param_prior = juliet.utils.generate_priors(params_P, dist_P, hyper_P)
+
+multiple_params_decorr(tim=tims, fl=flx, fle=flxe, params=params, plan_params=plan_param_prior, t14=W, out_path=os.getcwd(), verbose=True)
