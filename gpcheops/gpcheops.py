@@ -391,7 +391,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, out_path=os.g
     print('6) Final analysis was saved in the folder: ')
     print('   FINAL_ANALYSIS_' + instrument + ' folder in out_path.')
 
-
+"""
 import pycheops
 # Downloading data
 dd = pycheops.Dataset('CH_PR300024_TG000101_V0200')
@@ -413,3 +413,4 @@ hyper_P = [P, [0.5, 0.1], [0.,1.], [0.,1.], [0.,1.], [0.,1.], 0., 90., [1.,100.]
 plan_param_prior = juliet.utils.generate_priors(params_P, dist_P, hyper_P)
 
 multiple_params_decorr(tim=tims, fl=flx, fle=flxe, params=params, plan_params=plan_param_prior, t14=W, out_path=os.getcwd(), verbose=True)
+"""
