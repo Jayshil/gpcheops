@@ -59,7 +59,10 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, out_path=os.getcw
         log Bayesian evidence for the analysis
     """
     ### Essential planetary parameters
-    T0 = plan_params['t0_p1']['hyperparameters'][0]
+    try:
+        T0 = plan_params['t0_p1']['hyperparameters'][0]
+    except:
+        T0 = plan_params['t0_p1']['hyperparameters']
     ### Indentify the data
     instrument = list(tim.keys())[0]
     tim, fl, fle = tim[instrument], fl[instrument], fle[instrument]
@@ -328,7 +331,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, out_path=os.g
     ## Decorrelation vectors
     nms_decorr = list(params.keys())
     lnZ = 0.
-    last_used_param = nms_decorr[0]
+    last_used_param = 'NONE'
     params_used = []
     discarded_params = []
     for i in range(len(nms_decorr)):
@@ -349,28 +352,31 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, out_path=os.g
         print('-----------------------------')
         print('The instrument is: ', instrument)
         print('The last ln(Z) was (for the parameter ' + last_used_param + '): {:.4f}'.format(lnZ))
-        print('The new ln(Z) is: ', ln_z)
+        print('The new ln(Z) is (for the new parameter ' + nm_decor + '): ', ln_z)
         xx = input('Do you want to use this analysis further (Y/n)?: ')
         if xx == 'Y' or xx == 'y':
-            lnZ = ln_z
-            last_used_param = nm_decor
-            params_used.append(nm_decor)
-            if len(params_used) == 0:
+            if len(params_used) != 0:
                 tim3, fl3, fle3 = np.loadtxt(out_path + '/juliet/juliet_full_' + last_used_param + '/' + last_used_param + '_decorrelated_photometry.dat',\
                     usecols=(0,1,2), unpack=True)
                 tim4, fl4, fle4 = {}, {}, {}
                 tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
                 ln_z = single_param_decorr(tim=tim4, fl=fl4, fle=fle4, param=par_decor,\
                     plan_params=plan_params, t14=t14, out_path=out_path, verbose=verbose, save=True)
-                os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
-                os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
-                os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
+                #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
+                #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
+                #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
             else:
                 ln_z = single_param_decorr(tim=tim, fl=fl, fle=fle, param=par_decor,\
                     plan_params=plan_params, t14=t14, out_path=out_path, verbose=verbose, save=True)
-                os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
-                os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
-                os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
+                #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
+                #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
+                #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
+            lnZ = ln_z
+            last_used_param = nm_decor
+            params_used.append(nm_decor)
+            os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
+            os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
+            os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
         else:
             discarded_params.append(nm_decor)
     os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/* ' + out_path + '/FINAL_ANALYSIS_' + instrument)
@@ -381,7 +387,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, out_path=os.g
     print(' ')
     print('---------------------------------')
     print('1) Instrument used in analysis: ', instrument)
-    print('2) Inngested decorrelation parameters: ')
+    print('2) Ingested decorrelation parameters: ')
     print(nms_decorr)
     print('3) Parameter used in decorrelation:')
     print(params_used)
@@ -390,27 +396,3 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, out_path=os.g
     print('5) ln(Z) achieved in the analysis: ', lnZ)
     print('6) Final analysis was saved in the folder: ')
     print('   FINAL_ANALYSIS_' + instrument + ' folder in out_path.')
-
-"""
-import pycheops
-# Downloading data
-dd = pycheops.Dataset('CH_PR300024_TG000101_V0200')
-tim, fl, fle = dd.get_lightcurve(aperture='OPTIMAL', decontaminate=True)#, reject_highpoints=True)
-# To clip outliers (I would, in general, not prefer using this)
-tim, fl, fle = dd.clip_outliers(verbose=True);
-P, T0, W = 4.7362050, 0.5, 0.2974
-tim, fl, fle = dd.flatten(T0, W)
-
-tims, flx, flxe, params = {}, {}, {}, {}
-tims['CHEOPS'], flx['CHEOPS'], flxe['CHEOPS'] = tim, fl, fle
-params['ROLL'], params['CENX'], params['CENY'], params['BG'] = dd.lc['roll_angle'], dd.lc['centroid_x'], dd.lc['centroid_y'], dd.lc['bg']
-params['TIME'] = tim
-
-params_P = ['P_p1', 't0_p1', 'r1_p1', 'r2_p1', 'q1_CHEOPS', 'q2_CHEOPS', 'ecc_p1', 'omega_p1', 'a_p1']
-dist_P = ['fixed', 'normal', 'uniform', 'uniform', 'uniform', 'uniform', 'fixed', 'fixed', 'loguniform']
-hyper_P = [P, [0.5, 0.1], [0.,1.], [0.,1.], [0.,1.], [0.,1.], 0., 90., [1.,100.]]
-
-plan_param_prior = juliet.utils.generate_priors(params_P, dist_P, hyper_P)
-
-multiple_params_decorr(tim=tims, fl=flx, fle=flxe, params=params, plan_params=plan_param_prior, t14=W, out_path=os.getcwd(), verbose=True)
-"""
