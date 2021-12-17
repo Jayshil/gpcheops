@@ -15,7 +15,7 @@ def regress(x):
     return (x - np.mean(x))/np.sqrt(np.var(x))
 
 
-def single_param_decorr(tim, fl, fle, param, plan_params, t14, out_path=os.getcwd(), save=True, verbose=True):
+def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=os.getcwd(), save=True, verbose=True):
     """
     This function do the transit light curve analysis with
     lightcurve decorrelation done against a given parameter.
@@ -33,6 +33,10 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, out_path=os.getcw
         is to be used
     t14 : float
         transit duration
+    GP : str
+        On which GP kernel to use. ExM for Exponential-Matern kernel
+        QP for quasi-periodic kernel, SHO for Simple Harmonic Oscillator kernel
+        Default is ExM
     out_path : str
         output path of the analysed files
         note that everything will be saved in different folders
@@ -94,9 +98,18 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, out_path=os.getcw
     dist_ins = ['fixed', 'normal', 'loguniform']
     hyper_ins = [1., [0., 0.1], [0.1, 10000.]]
     # GP parameters
-    params_gp = ['GP_sigma_' + instrument, 'GP_timescale_' + instrument, 'GP_rho_' + instrument]
-    dist_gp = ['loguniform', 'loguniform', 'loguniform']
-    hyper_gp = [[1e-5, 10000.], [1e-3, 1e2], [1e-3, 1e2]]
+    if GP == 'ExM':
+        params_gp = ['GP_sigma_' + instrument, 'GP_timescale_' + instrument, 'GP_rho_' + instrument]
+        dist_gp = ['loguniform', 'loguniform', 'loguniform']
+        hyper_gp = [[1e-5, 10000.], [1e-3, 1e2], [1e-3, 1e2]]
+    elif GP == 'QP':
+        params_gp = ['GP_B_' + instrument, 'GP_C_' + instrument, 'GP_L_' + instrument, 'GP_Prot_' + instrument]
+        dist_gp = ['loguniform', 'loguniform', 'loguniform','loguniform']
+        hyper_gp = [[1e-5,1e3], [1e-5,1e4], [1e-3, 1e3], [1.,1e2]]
+    elif GP == 'SHO':
+        params_gp = ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
+        dist_gp = ['uniform', 'uniform', 'fixed']
+        hyper_gp = [[np.exp(-30.), np.exp(0.)], [np.exp(-2.), np.exp(8.)], np.exp(1/np.sqrt(2))]
     # Total priors
     params_gp_only = params_ins + params_gp
     dist_gp_only = dist_ins + dist_gp
@@ -128,10 +141,11 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, out_path=os.getcw
     ## Defining priors
     # We would take instrumental priors from our previous fit
     for i in range(len(params_gp)):
-        post1 = res_gp_only.posteriors['posterior_samples'][params_gp[i]]
-        mu, sig = np.median(post1), np.std(post1)
-        dist_gp[i] = 'truncatednormal'
-        hyper_gp[i] = [mu, sig, hyper_gp[i][0], hyper_gp[i][1]]
+        if dist_gp[i] != 'fixed':
+            post1 = res_gp_only.posteriors['posterior_samples'][params_gp[i]]
+            mu, sig = np.median(post1), np.std(post1)
+            dist_gp[i] = 'truncatednormal'
+            hyper_gp[i] = [mu, sig, hyper_gp[i][0], hyper_gp[i][1]]
     # Same goes for mflux and sigma_w
     # For sigma_w_CHEOPS
     dist_ins[2] = 'normal'
@@ -281,7 +295,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, out_path=os.getcw
 
 #single_param_decorr(tim, fl, fle, param, plan_params, t14, out_path=os.getcwd(), verbose=True, plots=True)
 
-def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, out_path=os.getcwd(), verbose=True):
+def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', out_path=os.getcwd(), verbose=True):
     """
     This function do the transit light curve analysis with
     lightcurve decorrelation done against a given set of parameters.
@@ -301,6 +315,10 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, out_path=os.g
         is to be used
     t14 : float
         transit duration
+    GP : str
+        On which GP kernel to use. ExM for Exponential-Matern kernel
+        QP for quasi-periodic kernel, SHO for Simple Harmonic Oscillator kernel
+        Default is ExM
     out_path : str
         output path of the analysed files
         note that everything will be saved in different folders
@@ -345,10 +363,10 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, out_path=os.g
             tim4, fl4, fle4 = {}, {}, {}
             tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
             ln_z = single_param_decorr(tim=tim4, fl=fl4, fle=fle4, param=par_decor,\
-                plan_params=plan_params, t14=t14, out_path=out_path, verbose=verbose, save=False)
+                plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, verbose=verbose, save=False)
         else:
             ln_z = single_param_decorr(tim=tim, fl=fl, fle=fle, param=par_decor,\
-                plan_params=plan_params, t14=t14, out_path=out_path, verbose=verbose, save=False)
+                plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, verbose=verbose, save=False)
         print('-----------------------------')
         print('The instrument is: ', instrument)
         print('The last ln(Z) was (for the parameter ' + last_used_param + '): {:.4f}'.format(lnZ))
@@ -361,13 +379,13 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, out_path=os.g
                 tim4, fl4, fle4 = {}, {}, {}
                 tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
                 ln_z = single_param_decorr(tim=tim4, fl=fl4, fle=fle4, param=par_decor,\
-                    plan_params=plan_params, t14=t14, out_path=out_path, verbose=verbose, save=True)
+                    plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, verbose=verbose, save=True)
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
             else:
                 ln_z = single_param_decorr(tim=tim, fl=fl, fle=fle, param=par_decor,\
-                    plan_params=plan_params, t14=t14, out_path=out_path, verbose=verbose, save=True)
+                    plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, verbose=verbose, save=True)
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
