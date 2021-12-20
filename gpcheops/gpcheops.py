@@ -228,6 +228,15 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     transit_model = tt3['tran_mod']
     transit_model_err = tt3['tran_mod_err']
 
+    # For transit model data
+    if priors['mdilution_' + instrument]['distribution'] == 'fixed':
+        dilution = 1.
+    else:
+        dilution = np.median(results_full.posteriors['posterior_samples']['mdilution_' + instrument])
+    mflux = np.median(results_full.posteriors['posterior_samples']['mflux_' + instrument])
+    tradata = ((fl[instrument] - gp_model)*(1 + (dilution*mflux)) - 1 + dilution)*(1/dilution)
+    #tradata = fl[instrument] - gp_model
+
     ## Making lightcurves
     if save:
         # Full model
@@ -254,7 +263,8 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         plt.close(fig)
 
         # Only transit model
-        fac = 1/np.max(transit_model)#1/(1+np.median(mflux))
+        #fac = 1#/np.max(transit_model)#1/(1+np.median(mflux))
+        fac = 1/(1+np.median(mflux))
         # Errors in the model
         umodel, lmodel = transit_model + transit_model_err, transit_model - transit_model_err
 
@@ -264,7 +274,8 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
 
         # Top panel
         ax1 = plt.subplot(gs[0])
-        ax1.errorbar(tim[instrument], (fl[instrument]-gp_model)*fac, yerr=fle[instrument], fmt='.', alpha=0.3)
+        ax1.errorbar(tim[instrument], tradata*fac, yerr=fle[instrument], fmt='.', alpha=0.3)
+        #ax1.errorbar(tim[instrument], (fl[instrument]-gp_model)*fac, yerr=fle[instrument], fmt='.', alpha=0.3)
         ax1.plot(tim[instrument], transit_model*fac, c='k', zorder=100)
         ax1.fill_between(tim[instrument], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
         ax1.set_ylabel('Relative Flux')
@@ -273,7 +284,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
 
         # Bottom panel
         ax2 = plt.subplot(gs[1])
-        ax2.errorbar(tim[instrument], (fl[instrument]-gp_model-transit_model)*1e6*fac, yerr=fle[instrument]*1e6, fmt='.', alpha=0.3)
+        ax2.errorbar(tim[instrument], (tradata-transit_model)*1e6*fac, yerr=fle[instrument]*1e6, fmt='.', alpha=0.3)
         ax2.axhline(y=0.0, c='black', ls='--')
         ax2.set_ylabel('Residuals (ppm)')
         ax2.set_xlabel('Time (BJD)')
