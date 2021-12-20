@@ -234,8 +234,8 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     else:
         dilution = np.median(results_full.posteriors['posterior_samples']['mdilution_' + instrument])
     mflux = np.median(results_full.posteriors['posterior_samples']['mflux_' + instrument])
-    tradata = ((fl[instrument] - gp_model)*(1 + (dilution*mflux)) - 1 + dilution)*(1/dilution)
-    #tradata = fl[instrument] - gp_model
+    #tradata = ((fl[instrument] - gp_model)*(1 + (dilution*mflux)) - 1 + dilution)*(1/dilution)
+    tradata = fl[instrument] - gp_model
 
     ## Making lightcurves
     if save:
@@ -264,7 +264,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
 
         # Only transit model
         #fac = 1#/np.max(transit_model)#1/(1+np.median(mflux))
-        fac = 1/(1+np.median(mflux))
+        fac = 1#/(1+np.median(mflux))
         # Errors in the model
         umodel, lmodel = transit_model + transit_model_err, transit_model - transit_model_err
 
