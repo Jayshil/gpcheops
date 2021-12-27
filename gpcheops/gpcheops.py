@@ -262,10 +262,16 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         fig = plt.figure(figsize=(16,9))
         gs = gd.GridSpec(2,1, height_ratios=[2,1])
 
+        t2 = np.linspace(np.min(tim[instrument]), np.max(tim[instrument]), 1000)
+        model_res = res_gp_only.lc.evaluate(instrument, t=t2, GPregressors=t2)
+        trans_model = res_gp_only.lc.model[instrument]['deterministic']
+        fac1 = 1/np.max(trans_model)
+
         # Top panel
         ax1 = plt.subplot(gs[0])
         ax1.errorbar(tim[instrument], (fl[instrument]-gp_model)*fac, yerr=fle[instrument], fmt='.', alpha=0.3)
-        ax1.plot(tim[instrument], transit_model*fac, c='k', zorder=100)
+        #ax1.plot(tim[instrument], transit_model*fac, c='k', zorder=100)
+        ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
         ax1.fill_between(tim[instrument], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
