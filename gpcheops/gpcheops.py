@@ -265,12 +265,32 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         fig = plt.figure(figsize=(16,9))
         gs = gd.GridSpec(2,1, height_ratios=[2,1])
 
+        ## 
+        dummy_tim, dummy_param = {}, {}
+        tt4 = Table()
+        tt4['time'], tt4['param'] = tim[instrument], param[instrument]
+        tt4.sort('param')
+        dummy_tim[instrument], dummy_param[instrument] = tt4['time'], tt4['param']
+
+        t2 = np.linspace(np.min(dummy_tim[instrument]), np.max(dummy_tim[instrument]), 10000)
+        #gp2 = np.linspace(np.min(dummy_param[instrument]), np.max(dummy_param[instrument]), 1000)
+        cs = CubicSpline(dummy_tim[instrument], dummy_param[instrument])
+        gp2 = cs(t2)
+        model_res = results_full.lc.evaluate(instrument, t=t2, GPregressors=gp2)
+        trans_model = results_full.lc.model[instrument]['deterministic']
+
+        tt5 = Table()
+        tt5['time'], tt5['param'], tt5['transit_model'] = t2, gp2, trans_model
+        tt5.sort('time')
+        t2, gp2, trans_model = tt5['time'], tt5['param'], tt5['transit_model']
+        fac1 = 1/np.max(trans_model)
+
         # Top panel
         ax1 = plt.subplot(gs[0])
         ax1.errorbar(tim[instrument], (fl[instrument]-gp_model)*fac, yerr=fle[instrument], fmt='.', alpha=0.3)
-        ax1.plot(tim[instrument], transit_model*fac, c='k', zorder=100)
-        #ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
-        ax1.fill_between(tim[instrument], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
+        #ax1.plot(tim[instrument], transit_model*fac, c='k', zorder=100)
+        ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
+        #ax1.fill_between(tim[instrument], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
@@ -579,12 +599,17 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), verbo
         fig = plt.figure(figsize=(16,9))
         gs = gd.GridSpec(2,1, height_ratios=[2,1])
 
+        t2 = np.linspace(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]), 10000)
+        model_res = results_full.lc.evaluate(instruments[i], t=t2, GPregressors=t2)
+        trans_model = results_full.lc.model[instruments[i]]['deterministic']
+        fac1 = 1/np.max(trans_model)
+
         # Top panel
         ax1 = plt.subplot(gs[0])
         ax1.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model)*fac, yerr=fle[instruments[i]], fmt='.', alpha=0.3)
-        ax1.plot(tim[instruments[i]], transit_model*fac, c='k', zorder=100)
-        #ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
-        ax1.fill_between(tim[instruments[i]], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
+        #ax1.plot(tim[instruments[i]], transit_model*fac, c='k', zorder=100)
+        ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
+        #ax1.fill_between(tim[instruments[i]], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
