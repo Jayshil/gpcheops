@@ -5,6 +5,9 @@ import matplotlib.gridspec as gd
 from astropy.table import Table
 import os
 from path import Path
+from glob import glob
+import pickle
+from scipy.interpolate import CubicSpline
 
 
 def regress(x):
@@ -149,12 +152,12 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     # Same goes for mflux and sigma_w
     # For sigma_w_CHEOPS
     dist_ins[2] = 'normal'
-    post2 = res_gp_only.posteriors['posterior_samples']['sigma_w_CHEOPS']
+    post2 = res_gp_only.posteriors['posterior_samples']['sigma_w_' + instrument]
     mu, sig = np.median(post2), np.std(post2)
     hyper_ins[2] = [mu, sig]#, hyper_ins[2][0], hyper_ins[2][1]]
     # For mflux
     dist_ins[1] = 'normal'
-    post2 = res_gp_only.posteriors['posterior_samples']['mflux_CHEOPS']
+    post2 = res_gp_only.posteriors['posterior_samples']['mflux_' + instrument]
     mu, sig = np.median(post2), np.std(post2)
     hyper_ins[1] = [mu, sig]
     # Planetary parameters
@@ -262,16 +265,11 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         fig = plt.figure(figsize=(16,9))
         gs = gd.GridSpec(2,1, height_ratios=[2,1])
 
-        t2 = np.linspace(np.min(tim[instrument]), np.max(tim[instrument]), 1000)
-        model_res = res_gp_only.lc.evaluate(instrument, t=t2, GPregressors=t2)
-        trans_model = res_gp_only.lc.model[instrument]['deterministic']
-        fac1 = 1/np.max(trans_model)
-
         # Top panel
         ax1 = plt.subplot(gs[0])
         ax1.errorbar(tim[instrument], (fl[instrument]-gp_model)*fac, yerr=fle[instrument], fmt='.', alpha=0.3)
-        #ax1.plot(tim[instrument], transit_model*fac, c='k', zorder=100)
-        ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
+        ax1.plot(tim[instrument], transit_model*fac, c='k', zorder=100)
+        #ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
         ax1.fill_between(tim[instrument], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
@@ -420,3 +418,184 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', out
     print('5) ln(Z) achieved in the analysis: ', lnZ)
     print('6) Final analysis was saved in the folder: ')
     print('   FINAL_ANALYSIS_' + instrument + ' folder in out_path.')
+
+
+def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), verbose=True):
+    """
+    This function will analyse multiple visits analysed
+    by multiple_params_decorr function
+    ---------------------------------------------------
+    Parameters:
+    -----------
+    input_folders : list
+        list containing folders analysed by multiple_params_decorr
+    plan_params : dict
+        juliet readable planetary priors
+    t14 : float
+        transit duration in days
+    out_path : str
+        path to the output folder
+        default is the present working directory
+    verbose : bool
+        boolean on whether to print progress of analysis
+        default is true
+    """
+    # Creating a dictionary to save data products
+    tim, fl, fle = {}, {}, {}
+    tim_oot, fl_oot, fle_oot = {}, {}, {}
+    # GP priors
+    par_gp, dist_gp, hyper_gp = [], [], []
+    # instrumental priors
+    par_ins, dist_ins, hyper_ins = [], [], []
+    # Saving the instruments
+    instruments = []
+    for i in range(len(input_folders)):
+        instrument = input_folders[i].split('_')[-1]
+        instruments.append(instrument)
+        # Saving decorrelated data
+        data_lc = glob(input_folders[i] + '/*_decorrelated_photometry.dat')[0]
+        tim_lc, fl_lc, fle_lc = np.loadtxt(data_lc, usecols=(0,1,2), unpack=True)
+        tim[instrument], fl[instrument], fle[instrument] = tim_lc, fl_lc, fle_lc
+        # Saving priors
+        pc1 = glob(input_folders[i] + '/*.pkl')[0]
+        print(pc1)
+        post1 = pickle.load(open(pc1, 'rb'), encoding='latin1')
+        pp1 = post1['posterior_samples']
+        # GP priors
+        for j in pp1.keys():
+            if j[0:2] == 'GP':
+                par_gp.append(j)
+                dist_gp.append('normal')
+                mu, sig = np.median(pp1[j]), 2*np.std(pp1[j])
+                hyper_gp.append([mu, sig])
+        # instrumental priors
+        # mdilution
+        par_ins.append('mdilution_' + instrument)
+        dist_ins.append('fixed')
+        hyper_ins.append(1.0)
+        # mflux and sigma_w
+        for j in pp1.keys():
+            if j[0:5] == 'mflux' or j[0:7] == 'sigma_w':
+                par_ins.append(j)
+                dist_ins.append('normal')
+                mu, sig = np.median(pp1[j]), 2*np.std(pp1[j])
+                hyper_ins.append([mu, sig])
+        t01 = np.median(pp1['t0_p1'])
+        mask = np.where(tim_lc > (t01 + (t14/2)))[0]
+        mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
+        tim_lc2, fl_lc2, fle_lc2 = tim_lc[mask], fl_lc[mask], fle_lc[mask]
+        tim_oot[instrument], fl_oot[instrument], fle_oot[instrument] = tim_lc2, fl_lc2, fle_lc2
+    # So, now, we have data from multiple instruments and corresponding priors
+    ### Folder to save results
+    pth1 = Path(out_path + '/FINAL_ANALYSIS_MULT_INSTRUMENT')
+    if not pth1.exists():
+        os.mkdir(pth1)
+    # We first fit the out of transit data
+    # Total priors
+    params_gp_only = par_ins + par_gp
+    dist_gp_only = dist_ins + dist_gp
+    hyper_gp_only = hyper_ins + hyper_gp
+    # Populating prior dict
+    priors = juliet.utils.generate_priors(params_gp_only, dist_gp_only, hyper_gp_only)
+
+    ## Running GP only fit
+    data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=tim_oot,\
+         out_folder=pth1 + '/oot')
+    res_gp_only = data.fit(sampler = 'dynesty', n_live_points=500, verbose = verbose)
+
+    ## Full data fit
+    ## Defining priors
+    # We would take instrumental priors from our previous fit
+    for i in range(len(par_gp)):
+        if dist_gp[i] != 'fixed':
+            post1 = res_gp_only.posteriors['posterior_samples'][par_gp[i]]
+            mu, sig = np.median(post1), 2*np.std(post1)
+            dist_gp[i] = 'normal'
+            hyper_gp[i] = [mu, sig]#, hyper_gp[i][0], hyper_gp[i][1]]
+    # Same goes for mflux and sigma_w
+    for i in range(len(par_ins)):
+        if dist_ins[i] != 'fixed':
+            post1 = res_gp_only.posteriors['posterior_samples'][par_ins[i]]
+            mu, sig = np.median(post1), 2*np.std(post1)
+            dist_ins[i] = 'normal'
+            hyper_ins[i] = [mu, sig]#, hyper_ins[i][0], hyper_ins[i][1]]
+    # Planetary parameters
+    params_P, dist_P, hyper_P = list(plan_params.keys()), [], []
+    for k in plan_params.keys():
+        dist_P.append(plan_params[k]['distribution'])
+        hyper_P.append(plan_params[k]['hyperparameters'])
+    # Total priors
+    params = params_P + par_ins + par_gp
+    dist = dist_P + dist_ins + dist_gp
+    hyper = hyper_P + hyper_ins + hyper_gp
+    # Prior dictionary
+    priors = juliet.utils.generate_priors(params, dist, hyper)
+
+    # Running the whole fit
+    data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=tim,\
+         out_folder=pth1)
+    results_full = data_full.fit(sampler = 'dynesty', n_live_points=500, verbose=True)
+
+    for i in range(len(instruments)):
+        ### Evaluating the fitted model
+        # juliet best fit model
+        model = results_full.lc.evaluate(instruments[i])
+        # juliet best fit gp model
+        gp_model = results_full.lc.model[instruments[i]]['GP']
+        # juliet best fit transit model and its errors
+        transit_model = results_full.lc.model[instruments[i]]['deterministic']
+        transit_model_err = results_full.lc.model[instruments[i]]['deterministic_errors']
+
+        # Plotting the results
+        # Full model
+        fig = plt.figure(figsize=(16,9))
+        gs = gd.GridSpec(2,1, height_ratios=[2,1])
+
+        # Top panel
+        ax1 = plt.subplot(gs[0])
+        ax1.errorbar(tim[instruments[i]], fl[instruments[i]], yerr=fle[instruments[i]], fmt='.', alpha=0.3)
+        ax1.plot(tim[instruments[i]], model, c='k', zorder=100)
+        ax1.set_ylabel('Relative Flux')
+        ax1.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
+        ax1.xaxis.set_major_formatter(plt.NullFormatter())
+
+        # Bottom panel
+        ax2 = plt.subplot(gs[1])
+        ax2.errorbar(tim[instruments[i]], (fl[instruments[i]]-model)*1e6, yerr=fle[instruments[i]]*1e6, fmt='.', alpha=0.3)
+        ax2.axhline(y=0.0, c='black', ls='--')
+        ax2.set_ylabel('Residuals (ppm)')
+        ax2.set_xlabel('Time (BJD)')
+        ax2.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
+
+        plt.savefig(pth1 + '/full_model_' + instruments[i] + '.png')
+        plt.close(fig)
+
+        # Only transit model
+        fac = 1/np.max(transit_model)#1/(1+np.median(mflux))
+        # Errors in the model
+        umodel, lmodel = transit_model + transit_model_err, transit_model - transit_model_err
+
+        # Making a plot
+        fig = plt.figure(figsize=(16,9))
+        gs = gd.GridSpec(2,1, height_ratios=[2,1])
+
+        # Top panel
+        ax1 = plt.subplot(gs[0])
+        ax1.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model)*fac, yerr=fle[instruments[i]], fmt='.', alpha=0.3)
+        ax1.plot(tim[instruments[i]], transit_model*fac, c='k', zorder=100)
+        #ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
+        ax1.fill_between(tim[instruments[i]], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
+        ax1.set_ylabel('Relative Flux')
+        ax1.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
+        ax1.xaxis.set_major_formatter(plt.NullFormatter())
+
+        # Bottom panel
+        ax2 = plt.subplot(gs[1])
+        ax2.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model-transit_model)*1e6*fac, yerr=fle[instruments[i]]*1e6, fmt='.', alpha=0.3)
+        ax2.axhline(y=0.0, c='black', ls='--')
+        ax2.set_ylabel('Residuals (ppm)')
+        ax2.set_xlabel('Time (BJD)')
+        ax2.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
+
+        plt.savefig(pth1 + '/transit_model_' + instruments[i] + '.png')
+        plt.close(fig)
