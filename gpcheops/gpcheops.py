@@ -329,7 +329,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     ## Decorrelating!!
     if save:
         tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument]
-        f1 = open(out_path + '/juliet'+ instrument +'/juliet_full_' + nm_param + '/' + nm_param + '_decorrelated_photometry.dat','w')
+        f1 = open(out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param + '/' + nm_param + '_decorrelated_photometry.dat','w')
         for i in range(len(tim[instrument])):
             f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
         f1.close()
