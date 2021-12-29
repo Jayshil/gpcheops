@@ -142,7 +142,7 @@ setup(
             'numpy>=1.17.2',
             'scipy',
             'astropy>=3.2.2',
-            'juliet'
+            'juliet',
             'matplotlib>3.2',
             'pycheops>1.0.0'],  # Optional
 
