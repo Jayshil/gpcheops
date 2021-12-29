@@ -1,3 +1,6 @@
 # gpcheops
 
-You'd probably say, what's new in this?! Well, the answer is it can use GPs to not only fit the dataset, but also perform decorrelation against various parameters. (A more thorough documentation will follow soon!)
+You'd probably say, what's new in this?! Well, the answer is that it can use GPs to not only in fitting the dataset, but also to perform decorrelation/detrending against various parameters.
+
+## Concenpt of `gpcheops`
+(Coming soon!!)
