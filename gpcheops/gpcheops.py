@@ -61,7 +61,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     return:
     -----------
     .dat file :
-        decorrelated photometry stored in out_folder/juliet/juliet_full_param
+        decorrelated photometry stored in out_folder/juliet_instrument/juliet_full_param
     lnZ : float
         log Bayesian evidence for the analysis
     """
@@ -142,7 +142,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
 
     ## Running GP only fit
     data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=param_oot,\
-         out_folder=out_path + '/juliet/juliet_oot_' + nm_param)
+         out_folder=out_path + '/juliet_'+ instrument +'/juliet_oot_' + nm_param)
     res_gp_only = data.fit(sampler = 'dynesty', n_live_points=500, verbose = verbose)
 
     ### Now it's time for a full fitting
@@ -194,7 +194,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
 
     # Running the whole fit
     data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=param,\
-         out_folder=out_path + '/juliet/juliet_full_' + nm_param)
+         out_folder=out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param)
     results_full = data_full.fit(sampler = 'dynesty', n_live_points=500, verbose=True)
 
     ### Evaluating the fitted model
@@ -228,7 +228,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         ax2.set_xlim(np.min(param[instrument]), np.max(param[instrument]))
 
         # Saving the figure
-        plt.savefig(out_path + '/juliet/juliet_full_' + nm_param + '/decorr_' + nm_param +'.png')
+        plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param + '/decorr_' + nm_param +'.png')
         plt.close(fig)
     
     ## Sorting again in time ascending order to make lightcurve plots
@@ -273,7 +273,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         ax2.set_xlabel('Time (BJD)')
         ax2.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
 
-        plt.savefig(out_path + '/juliet/juliet_full_' + nm_param + '/full_model_' + nm_param + '.png')
+        plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param + '/full_model_' + nm_param + '.png')
         plt.close(fig)
 
         # Only transit model
@@ -323,13 +323,13 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         ax2.set_xlabel('Time (BJD)')
         ax2.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
 
-        plt.savefig(out_path + '/juliet/juliet_full_' + nm_param + '/transit_model_' + nm_param + '.png')
+        plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param + '/transit_model_' + nm_param + '.png')
         plt.close(fig)
 
     ## Decorrelating!!
     if save:
         tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument]
-        f1 = open(out_path + '/juliet/juliet_full_' + nm_param + '/' + nm_param + '_decorrelated_photometry.dat','w')
+        f1 = open(out_path + '/juliet'+ instrument +'/juliet_full_' + nm_param + '/' + nm_param + '_decorrelated_photometry.dat','w')
         for i in range(len(tim[instrument])):
             f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
         f1.close()
@@ -380,7 +380,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', out
     return:
     -----------
     .dat file :
-        decorrelated photometry stored in out_folder/juliet/juliet_full_param
+        decorrelated photometry stored in out_folder/juliet_instrument/juliet_full_param
     lnZ : float
         log Bayesian evidence for the analysis
     """
@@ -402,7 +402,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', out
         par_decor = {}
         par_decor[nm_decor] = par_decor1
         if len(params_used) != 0:
-            tim3, fl3, fle3 = np.loadtxt(out_path + '/juliet/juliet_full_' + last_used_param + '/' + last_used_param + '_decorrelated_photometry.dat',\
+            tim3, fl3, fle3 = np.loadtxt(out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/' + last_used_param + '_decorrelated_photometry.dat',\
                 usecols=(0,1,2), unpack=True)
             tim4, fl4, fle4 = {}, {}, {}
             tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
@@ -418,7 +418,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', out
         xx = input('Do you want to use this analysis further (Y/n)?: ')
         if xx == 'Y' or xx == 'y':
             if len(params_used) != 0:
-                tim3, fl3, fle3 = np.loadtxt(out_path + '/juliet/juliet_full_' + last_used_param + '/' + last_used_param + '_decorrelated_photometry.dat',\
+                tim3, fl3, fle3 = np.loadtxt(out_path + '/juliet'+ instrument +'/juliet_full_' + last_used_param + '/' + last_used_param + '_decorrelated_photometry.dat',\
                     usecols=(0,1,2), unpack=True)
                 tim4, fl4, fle4 = {}, {}, {}
                 tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
@@ -436,12 +436,12 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', out
             lnZ = ln_z
             last_used_param = nm_decor
             params_used.append(nm_decor)
-            os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
-            os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
-            os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
+            os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
+            os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
+            os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
         else:
             discarded_params.append(nm_decor)
-    os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/* ' + out_path + '/FINAL_ANALYSIS_' + instrument)
+    os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/* ' + out_path + '/FINAL_ANALYSIS_' + instrument)
     print(' ')
     print('---------------------------------')
     print(' ')
