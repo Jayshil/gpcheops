@@ -18,7 +18,7 @@ def regress(x):
     return (x - np.mean(x))/np.sqrt(np.var(x))
 
 
-def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=os.getcwd(), save=True, verbose=True):
+def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=os.getcwd(), sampler='dynesty', save=True, verbose=True):
     """
     This function do the transit light curve analysis with
     lightcurve decorrelation done against a given parameter.
@@ -45,6 +45,10 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         note that everything will be saved in different folders
         which would be sub-folders of a folder called juliet
         default is the present working directory
+    sampler : str
+        sampler to be used in posterior estimation
+        a valid choices are 'multinest', 'dynesty', 'dynamic_dynesty', or 'ultranest'
+        default is 'dynesty'
     save : bool
         boolean on whether to save decorrelated photometry
         and plots.
@@ -143,7 +147,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     ## Running GP only fit
     data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=param_oot,\
          out_folder=out_path + '/juliet_'+ instrument +'/juliet_oot_' + nm_param)
-    res_gp_only = data.fit(sampler = 'dynesty', n_live_points=500, verbose = verbose)
+    res_gp_only = data.fit(sampler = sampler, n_live_points=500, verbose = verbose)
 
     ### Now it's time for a full fitting
     # All data is already provided
@@ -195,7 +199,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     # Running the whole fit
     data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=param,\
          out_folder=out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param)
-    results_full = data_full.fit(sampler = 'dynesty', n_live_points=500, verbose=True)
+    results_full = data_full.fit(sampler = sampler, n_live_points=500, verbose=True)
 
     ### Evaluating the fitted model
     # juliet best fit model
@@ -339,7 +343,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
 
 #single_param_decorr(tim, fl, fle, param, plan_params, t14, out_path=os.getcwd(), verbose=True, plots=True)
 
-def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', out_path=os.getcwd(), verbose=True):
+def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sampler='dynesty', out_path=os.getcwd(), verbose=True):
     """
     This function do the transit light curve analysis with
     lightcurve decorrelation done against a given set of parameters.
@@ -363,6 +367,10 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', out
         On which GP kernel to use. ExM for Exponential-Matern kernel
         QP for quasi-periodic kernel, SHO for Simple Harmonic Oscillator kernel
         Default is ExM
+    sampler : str
+        sampler to be used in posterior estimation
+        a valid choices are 'multinest', 'dynesty', 'dynamic_dynesty', or 'ultranest'
+        default is 'dynesty'
     out_path : str
         output path of the analysed files
         note that everything will be saved in different folders
@@ -407,10 +415,10 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', out
             tim4, fl4, fle4 = {}, {}, {}
             tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
             ln_z = single_param_decorr(tim=tim4, fl=fl4, fle=fle4, param=par_decor,\
-                plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, verbose=verbose, save=False)
+                plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, save=False)
         else:
             ln_z = single_param_decorr(tim=tim, fl=fl, fle=fle, param=par_decor,\
-                plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, verbose=verbose, save=False)
+                plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, save=False)
         print('-----------------------------')
         print('The instrument is: ', instrument)
         print('The last ln(Z) was (for the parameter ' + last_used_param + '): {:.4f}'.format(lnZ))
@@ -423,13 +431,13 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', out
                 tim4, fl4, fle4 = {}, {}, {}
                 tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
                 ln_z = single_param_decorr(tim=tim4, fl=fl4, fle=fle4, param=par_decor,\
-                    plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, verbose=verbose, save=True)
+                    plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, save=True)
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
             else:
                 ln_z = single_param_decorr(tim=tim, fl=fl, fle=fle, param=par_decor,\
-                    plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, verbose=verbose, save=True)
+                    plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, save=True)
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
@@ -460,7 +468,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', out
     print('   FINAL_ANALYSIS_' + instrument + ' folder in out_path.')
 
 
-def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), verbose=True):
+def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), sampler='dynesty', verbose=True):
     """
     This function will analyse multiple visits analysed
     by multiple_params_decorr function
@@ -476,6 +484,10 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), verbo
     out_path : str
         path to the output folder
         default is the present working directory
+    sampler : str
+        sampler to be used in posterior estimation
+        a valid choices are 'multinest', 'dynesty', 'dynamic_dynesty', or 'ultranest'
+        default is 'dynesty'
     verbose : bool
         boolean on whether to print progress of analysis
         default is true
@@ -541,7 +553,7 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), verbo
     ## Running GP only fit
     data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=tim_oot,\
          out_folder=pth1 + '/oot')
-    res_gp_only = data.fit(sampler = 'dynesty', n_live_points=500, verbose = verbose)
+    res_gp_only = data.fit(sampler = sampler, n_live_points=500, verbose = verbose)
 
     ## Full data fit
     ## Defining priors
@@ -574,7 +586,7 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), verbo
     # Running the whole fit
     data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=tim,\
          out_folder=pth1)
-    results_full = data_full.fit(sampler = 'dynesty', n_live_points=500, verbose=True)
+    results_full = data_full.fit(sampler = sampler, n_live_points=500, verbose=True)
 
     for i in range(len(instruments)):
         ### Evaluating the fitted model
