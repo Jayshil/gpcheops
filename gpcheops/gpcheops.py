@@ -70,6 +70,10 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         T0 = plan_params['t0_p1']['hyperparameters'][0]
     except:
         T0 = plan_params['t0_p1']['hyperparameters']
+    try:
+        per4 = plan_params['P_p1']['hyperparameters'][0]
+    except:
+        per4 = plan_params['P_p1']['hyperparameters']
     ### Indentify the data
     instrument = list(tim.keys())[0]
     tim, fl, fle = tim[instrument], fl[instrument], fle[instrument]
@@ -79,8 +83,24 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     
     ### Let's first do the out-of-the-transit analysis.
     # Masking in-transit points
-    mask = np.where(tim > (T0 + (t14/2)))[0]
-    mask = np.hstack((np.where(tim < (T0 - (t14/2)))[0], mask))
+    eclipse = False
+    transit = False
+    for j in plan_params.keys():
+        if j[0:2] == 'fp':
+            eclipse = True
+        if j[0:2] == 'q1':
+            transit = True
+    if eclipse and not transit:
+        mask = np.where(tim > (T0 + (per4/2) + (t14/2)))[0]
+        mask = np.hstack((np.where(tim < (T0 + (per4/2) - (t14/2)))[0], mask))
+    elif transit and not eclipse:
+        mask = np.where(tim > (T0 + (t14/2)))[0]
+        mask = np.hstack((np.where(tim < (T0 - (t14/2)))[0], mask))
+    elif transit and eclipse:
+        mask = np.where(tim > (T0 + (t14/2)))[0]
+        mask = np.hstack((np.where(tim < (T0 - (t14/2)))[0], mask))
+        mask = np.hstack((np.where(tim < (T0 + (per4/2) + (t14/2)))[0], mask))
+        mask = np.hstack((np.where(tim < (T0 + (per4/2) - (t14/2)))[0], mask))
     
     # Out-of-transit data
     tim_oot, fl_oot, fle_oot, param_oot = {}, {}, {}, {}
