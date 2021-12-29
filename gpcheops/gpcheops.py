@@ -418,7 +418,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', out
         xx = input('Do you want to use this analysis further (Y/n)?: ')
         if xx == 'Y' or xx == 'y':
             if len(params_used) != 0:
-                tim3, fl3, fle3 = np.loadtxt(out_path + '/juliet'+ instrument +'/juliet_full_' + last_used_param + '/' + last_used_param + '_decorrelated_photometry.dat',\
+                tim3, fl3, fle3 = np.loadtxt(out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/' + last_used_param + '_decorrelated_photometry.dat',\
                     usecols=(0,1,2), unpack=True)
                 tim4, fl4, fle4 = {}, {}, {}
                 tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
