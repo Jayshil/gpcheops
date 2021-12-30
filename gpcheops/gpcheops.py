@@ -533,8 +533,28 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), sampl
                 mu, sig = np.median(pp1[j]), 2*np.std(pp1[j])
                 hyper_ins.append([mu, sig])
         t01 = np.median(pp1['t0_p1'])
-        mask = np.where(tim_lc > (t01 + (t14/2)))[0]
-        mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
+        try:
+            p01 = np.median(pp1['P_p1'])
+        except:
+            p01 = plan_params['P_p1']['hyperparameters']
+        eclipse = False
+        transit = False
+        for k in pp1.keys():
+            if k[0:2] == 'fp':
+                eclipse = True
+            if k[0:2] == 'q1':
+                transit = True
+        if transit and not eclipse:
+            mask = np.where(tim_lc > (t01 + (t14/2)))[0]
+            mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
+        if eclipse and not transit:
+            mask = np.where(tim_lc > (t01 + (p01/2) + (t14/2)))[0]
+            mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) - (t14/2)))[0], mask))
+        if eclipse and transit:
+            mask = np.where(tim_lc > (t01 + (t14/2)))[0]
+            mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
+            mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) + (t14/2)))[0], mask))
+            mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) - (t14/2)))[0], mask))
         tim_lc2, fl_lc2, fle_lc2 = tim_lc[mask], fl_lc[mask], fle_lc[mask]
         tim_oot[instrument], fl_oot[instrument], fle_oot[instrument] = tim_lc2, fl_lc2, fle_lc2
     # So, now, we have data from multiple instruments and corresponding priors
