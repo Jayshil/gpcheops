@@ -129,7 +129,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     if GP == 'ExM':
         params_gp = ['GP_sigma_' + instrument, 'GP_timescale_' + instrument, 'GP_rho_' + instrument]
         dist_gp = ['loguniform', 'loguniform', 'loguniform']
-        hyper_gp = [[1e-6, 10000.], [1e-4, 1e2], [1e-3, 1e3]]
+        hyper_gp = [[1e-6, 10000.], [1e-4, 1e2], [1e-3, 1e2]]
     elif GP == 'QP':
         params_gp = ['GP_B_' + instrument, 'GP_C_' + instrument, 'GP_L_' + instrument, 'GP_Prot_' + instrument]
         dist_gp = ['loguniform', 'loguniform', 'loguniform','loguniform']
