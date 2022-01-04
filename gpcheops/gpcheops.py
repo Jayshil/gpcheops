@@ -8,6 +8,7 @@ from path import Path
 from glob import glob
 import pickle
 from scipy.interpolate import CubicSpline
+import corner
 
 
 def regress(x):
@@ -327,7 +328,12 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         ax2.set_xlabel('Time (BJD)')
         ax2.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
 
-        plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param + '/transit_model_' + nm_param + '.png')
+        if transit:
+            plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param + '/transit_model_' + nm_param + '.png')
+        elif eclipse:
+            plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param + '/eclipse_model_' + nm_param + '.png')
+        else:
+            plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param + '/transit_eclipse_model_' + nm_param + '.png')
         plt.close(fig)
 
     ## Decorrelating!!
@@ -446,7 +452,13 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
             params_used.append(nm_decor)
             os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
             os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
-            os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
+            try:
+                try:
+                    os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
+                except:
+                    os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/eclipse_model_' + nm_decor + '.png ' + p1 + '/eclipse_model_' + nm_decor + '.png')
+            except:
+                os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/transit_eclipse_model_' + nm_decor + '.png ' + p1 + '/transit_eclipse_model_' + nm_decor + '.png')
         else:
             discarded_params.append(nm_decor)
     os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/* ' + out_path + '/FINAL_ANALYSIS_' + instrument)
@@ -674,5 +686,65 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), sampl
         ax2.set_xlabel('Time (BJD)')
         ax2.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
 
-        plt.savefig(pth1 + '/transit_model_' + instruments[i] + '.png')
+        if transit:
+            plt.savefig(pth1 + '/transit_model_' + instruments[i] + '.png')
+        elif eclipse:
+            plt.savefig(pth1 + '/eclipse_model_' + instruments[i] + '.png')
+        else:
+            plt.savefig(pth1 + '/transit_eclipse_model_' + instruments[i] + '.png')
         plt.close(fig)
+
+def corner_plot(folder, planet_only=False):
+    """
+    This function will generate corner plots of posterios
+    in a given folder
+    -----------------------------------------------------
+    Parameters:
+    -----------
+    folder : str
+        Path of the folder where the .pkl file is located
+    planet_only : bool
+        Boolean on whether to make corner plot of only
+        planetary parameters
+        Default is False
+    -----------
+    return
+    -----------
+    corner plot : .pdf file
+        stored inside folder directory
+    """
+    pcl = glob(folder + '/*.pkl')[0]
+    post = pickle.load(open(pcl, 'rb'), encoding='latin1')
+    p1 = post['posterior_samples']
+    lst = []
+    if not planet_only:
+        for i in p1.keys():
+            gg = i.split('_')
+            if 'p1' in gg or 'mflux' in gg or 'sigma' in gg or 'GP' in gg or 'mdilution' in gg:
+                lst.append(i)
+    else:
+        for i in p1.keys():
+            gg = i.split('_')
+            if 'p1' in gg:
+                lst.append(i)
+    cd = p1[lst[0]]
+    for i in range(len(lst)-1):
+        cd = np.vstack((cd, p1[lst[i+1]]))
+    data = np.transpose(cd)
+    value = np.median(data, axis=0)
+    ndim = len(lst)
+    fig = corner.corner(data, labels=lst)
+    axes = np.array(fig.axes).reshape((ndim, ndim))
+
+    for i in range(ndim):
+        ax = axes[i,i]
+        ax.axvline(value[i], color = 'r')
+
+    for yi in range(ndim):
+        for xi in range(yi):
+            ax = axes[yi, xi]
+            ax.axvline(value[xi], color = 'r')
+            ax.axhline(value[yi], color = 'r')
+            ax.plot(value[xi], value[yi], 'sr')
+
+    fig.savefig(folder + "/corner.pdf")
