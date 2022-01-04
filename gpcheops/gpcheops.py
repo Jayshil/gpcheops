@@ -124,12 +124,12 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     # Instrumental parameters
     params_ins = ['mdilution_' + instrument, 'mflux_' + instrument, 'sigma_w_' + instrument]
     dist_ins = ['fixed', 'normal', 'loguniform']
-    hyper_ins = [1., [0., 0.1], [0.1, 10000.]]
+    hyper_ins = [1., [0., 0.1], [0.001, 10000.]]
     # GP parameters
     if GP == 'ExM':
         params_gp = ['GP_sigma_' + instrument, 'GP_timescale_' + instrument, 'GP_rho_' + instrument]
         dist_gp = ['loguniform', 'loguniform', 'loguniform']
-        hyper_gp = [[1e-5, 10000.], [1e-3, 1e2], [1e-3, 1e2]]
+        hyper_gp = [[1e-6, 10000.], [1e-4, 1e2], [1e-3, 1e3]]
     elif GP == 'QP':
         params_gp = ['GP_B_' + instrument, 'GP_C_' + instrument, 'GP_L_' + instrument, 'GP_Prot_' + instrument]
         dist_gp = ['loguniform', 'loguniform', 'loguniform','loguniform']
