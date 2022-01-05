@@ -130,10 +130,11 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         params_gp = ['GP_sigma_' + instrument, 'GP_timescale_' + instrument, 'GP_rho_' + instrument]
         dist_gp = ['loguniform', 'loguniform', 'loguniform']
         hyper_gp = [[1e-5, 10000.], [1e-3, 1e2], [1e-3, 1e2]]
+        #hyper_gp = [[1e-5, 1000.], [1e-3, 5*np.ptp(param)], [1e-3, 5*np.ptp(param)]]
     elif GP == 'QP':
         params_gp = ['GP_B_' + instrument, 'GP_C_' + instrument, 'GP_L_' + instrument, 'GP_Prot_' + instrument]
         dist_gp = ['loguniform', 'loguniform', 'loguniform','loguniform']
-        hyper_gp = [[1e-5,1e3], [1e-5,1e4], [1e-3, 1e3], [1.,1e2]]
+        hyper_gp = [[1e-5,1e4], [1e-5,1e4], [1e-5, 1e4], [1.,1e2]]
     elif GP == 'SHO':
         params_gp = ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
         dist_gp = ['uniform', 'uniform', 'fixed']
@@ -172,19 +173,19 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         if dist_gp[i] != 'fixed':
             post1 = res_gp_only.posteriors['posterior_samples'][params_gp[i]]
             mu, sig = np.median(post1), np.std(post1)
-            dist_gp[i] = 'truncatednormal'
-            hyper_gp[i] = [mu, sig, hyper_gp[i][0], hyper_gp[i][1]]
+            dist_gp[i] = 'normal'
+            hyper_gp[i] = [mu, 2*sig]#, hyper_gp[i][0], hyper_gp[i][1]]
     # Same goes for mflux and sigma_w
     # For sigma_w_CHEOPS
-    dist_ins[2] = 'truncatednormal'
+    dist_ins[2] = 'normal'
     post2 = res_gp_only.posteriors['posterior_samples']['sigma_w_' + instrument]
     mu, sig = np.median(post2), np.std(post2)
-    hyper_ins[2] = [mu, sig, hyper_ins[2][0], hyper_ins[2][1]]
+    hyper_ins[2] = [mu, 2*sig]#, hyper_ins[2][0], hyper_ins[2][1]]
     # For mflux
     dist_ins[1] = 'normal'
     post2 = res_gp_only.posteriors['posterior_samples']['mflux_' + instrument]
     mu, sig = np.median(post2), np.std(post2)
-    hyper_ins[1] = [mu, sig]
+    hyper_ins[1] = [mu, 2*sig]
     # Planetary parameters
     params_P, dist_P, hyper_P = list(plan_params.keys()), [], []
     for k in plan_params.keys():
@@ -398,6 +399,14 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
     lnZ : float
         log Bayesian evidence for the analysis
     """
+    # Determining what kind of fitting is it
+    eclipse = False
+    transit = False
+    for j in plan_params.keys():
+        if j[0:2] == 'fp':
+            eclipse = True
+        if j[0:2] == 'q1':
+            transit = True
     ## Instrument
     instrument = list(tim.keys())[0]
     ### Folder to save results
@@ -452,12 +461,11 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
             params_used.append(nm_decor)
             os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
             os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
-            try:
-                try:
-                    os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
-                except:
-                    os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/eclipse_model_' + nm_decor + '.png ' + p1 + '/eclipse_model_' + nm_decor + '.png')
-            except:
+            if transit:
+                os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
+            elif eclipse:
+                os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/eclipse_model_' + nm_decor + '.png ' + p1 + '/eclipse_model_' + nm_decor + '.png')
+            elif transit and eclipse:
                 os.system('cp ' + out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/transit_eclipse_model_' + nm_decor + '.png ' + p1 + '/transit_eclipse_model_' + nm_decor + '.png')
         else:
             discarded_params.append(nm_decor)
