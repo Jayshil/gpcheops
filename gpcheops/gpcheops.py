@@ -138,7 +138,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     elif GP == 'SHO':
         params_gp = ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
         dist_gp = ['uniform', 'uniform', 'fixed']
-        hyper_gp = [[np.exp(-30.), np.exp(0.)], [np.exp(-2.), np.exp(8.)], np.exp(1/np.sqrt(2))]
+        hyper_gp = [[np.exp(-40.), np.exp(0.)], [np.exp(-10.), np.exp(10.)], np.exp(1/np.sqrt(2))]
     # Total priors
     params_gp_only = params_ins + params_gp
     dist_gp_only = dist_ins + dist_gp
