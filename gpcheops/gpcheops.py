@@ -130,7 +130,6 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         params_gp = ['GP_sigma_' + instrument, 'GP_timescale_' + instrument, 'GP_rho_' + instrument]
         dist_gp = ['loguniform', 'loguniform', 'loguniform']
         hyper_gp = [[1e-5, 10000.], [1e-3, 1e2], [1e-3, 1e2]]
-        #hyper_gp = [[1e-5, 1000.], [1e-3, 5*np.ptp(param)], [1e-3, 5*np.ptp(param)]]
     elif GP == 'QP':
         params_gp = ['GP_B_' + instrument, 'GP_C_' + instrument, 'GP_L_' + instrument, 'GP_Prot_' + instrument]
         dist_gp = ['loguniform', 'loguniform', 'loguniform','loguniform']
@@ -735,9 +734,26 @@ def corner_plot(folder, planet_only=False):
             gg = i.split('_')
             if 'p1' in gg:
                 lst.append(i)
-    cd = p1[lst[0]]
+    if 't0' in lst[0].split('_'):
+        t01 = np.floor(p1[lst[0]][0])
+        cd = p1[lst[0]] - t01
+        lst[0] = lst[0] + ' - ' + str(t01)
+    elif 'fp' in lst[0].split('_'):
+        cd = p1[lst[0]]*1e6
+        lst[0] = lst[0] + ' (in ppm)'
+    else:
+        cd = p1[lst[0]]
     for i in range(len(lst)-1):
-        cd = np.vstack((cd, p1[lst[i+1]]))
+        if 't0' in lst[i+1].split('_'):
+            t02 = np.floor(p1[lst[i+1]])
+            cd1 = p1[lst[i+1]] - t02
+            cd = np.vstack((cd, cd1))
+            lst[i+1] = lst[i+1] + ' - ' + str(t01)
+        elif 'fp' in lst[i+1].split('_'):
+            cd = np.vstack((cd, p1[lst[i+1]]*1e6))
+            lst[i+1] = lst[i+1] + ' (in ppm)'
+        else:
+            cd = np.vstack((cd, p1[lst[i+1]]))
     data = np.transpose(cd)
     value = np.median(data, axis=0)
     ndim = len(lst)
