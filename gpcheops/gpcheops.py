@@ -547,17 +547,17 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
         """
         # GP parameters
         if GP == 'ExM':
-            par_gp = ['GP_sigma_' + instrument, 'GP_timescale_' + instrument, 'GP_rho_' + instrument]
-            dist_gp = ['loguniform', 'loguniform', 'loguniform']
-            hyper_gp = [[1e-5, 10000.], [1e-3, 1e2], [1e-3, 1e2]]
+            par_gp = par_gp + ['GP_sigma_' + instrument, 'GP_timescale_' + instrument, 'GP_rho_' + instrument]
+            dist_gp = dist_gp + ['loguniform', 'loguniform', 'loguniform']
+            hyper_gp = hyper_gp + [[1e-5, 10000.], [1e-3, 1e2], [1e-3, 1e2]]
         elif GP == 'QP':
-            par_gp = ['GP_B_' + instrument, 'GP_C_' + instrument, 'GP_L_' + instrument, 'GP_Prot_' + instrument]
-            dist_gp = ['loguniform', 'loguniform', 'loguniform','loguniform']
-            hyper_gp = [[1e-5,1e4], [1e-5,1e4], [1e-5, 1e4], [1.,1e2]]
+            par_gp = par_gp + ['GP_B_' + instrument, 'GP_C_' + instrument, 'GP_L_' + instrument, 'GP_Prot_' + instrument]
+            dist_gp = dist_gp + ['loguniform', 'loguniform', 'loguniform','loguniform']
+            hyper_gp = hyper_gp + [[1e-5,1e4], [1e-5,1e4], [1e-5, 1e4], [1.,1e2]]
         elif GP == 'SHO':
-            par_gp = ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
-            dist_gp = ['uniform', 'uniform', 'fixed']
-            hyper_gp = [[np.exp(-40.), np.exp(0.)], [np.exp(-10.), np.exp(10.)], np.exp(1/np.sqrt(2))]
+            par_gp = par_gp + ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
+            dist_gp = dist_gp + ['uniform', 'uniform', 'fixed']
+            hyper_gp = hyper_gp + [[np.exp(-40.), np.exp(0.)], [np.exp(-10.), np.exp(10.)], np.exp(1/np.sqrt(2))]
         # instrumental priors
         # mdilution
         par_ins.append('mdilution_' + instrument)
