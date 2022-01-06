@@ -487,7 +487,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
     print('   FINAL_ANALYSIS_' + instrument + ' folder in out_path.')
 
 
-def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), sampler='dynesty', verbose=True):
+def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='ExM', sampler='dynesty', verbose=True):
     """
     This function will analyse multiple visits analysed
     by multiple_params_decorr function
@@ -503,6 +503,10 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), sampl
     out_path : str
         path to the output folder
         default is the present working directory
+    GP : str
+        On which GP kernel to use. ExM for Exponential-Matern kernel
+        QP for quasi-periodic kernel, SHO for Simple Harmonic Oscillator kernel
+        Default is ExM
     sampler : str
         sampler to be used in posterior estimation
         a valid choices are 'multinest', 'dynesty', 'dynamic_dynesty', or 'ultranest'
@@ -533,12 +537,27 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), sampl
         post1 = pickle.load(open(pc1, 'rb'), encoding='latin1')
         pp1 = post1['posterior_samples']
         # GP priors
+        """
         for j in pp1.keys():
             if j[0:2] == 'GP':
                 par_gp.append(j)
                 dist_gp.append('normal')
                 mu, sig = np.median(pp1[j]), 2*np.std(pp1[j])
                 hyper_gp.append([mu, sig])
+        """
+        # GP parameters
+        if GP == 'ExM':
+            par_gp = ['GP_sigma_' + instrument, 'GP_timescale_' + instrument, 'GP_rho_' + instrument]
+            dist_gp = ['loguniform', 'loguniform', 'loguniform']
+            hyper_gp = [[1e-5, 10000.], [1e-3, 1e2], [1e-3, 1e2]]
+        elif GP == 'QP':
+            par_gp = ['GP_B_' + instrument, 'GP_C_' + instrument, 'GP_L_' + instrument, 'GP_Prot_' + instrument]
+            dist_gp = ['loguniform', 'loguniform', 'loguniform','loguniform']
+            hyper_gp = [[1e-5,1e4], [1e-5,1e4], [1e-5, 1e4], [1.,1e2]]
+        elif GP == 'SHO':
+            par_gp = ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
+            dist_gp = ['uniform', 'uniform', 'fixed']
+            hyper_gp = [[np.exp(-40.), np.exp(0.)], [np.exp(-10.), np.exp(10.)], np.exp(1/np.sqrt(2))]
         # instrumental priors
         # mdilution
         par_ins.append('mdilution_' + instrument)
