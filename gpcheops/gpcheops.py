@@ -568,7 +568,7 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
             if j[0:5] == 'mflux' or j[0:7] == 'sigma_w':
                 par_ins.append(j)
                 dist_ins.append('normal')
-                mu, sig = np.median(pp1[j]), 2*np.std(pp1[j])
+                mu, sig = np.median(pp1[j]), np.std(pp1[j])
                 hyper_ins.append([mu, sig])
         t01 = np.median(pp1['t0_p1'])
         try:
@@ -619,14 +619,14 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
     for i in range(len(par_gp)):
         if dist_gp[i] != 'fixed':
             post1 = res_gp_only.posteriors['posterior_samples'][par_gp[i]]
-            mu, sig = np.median(post1), 2*np.std(post1)
+            mu, sig = np.median(post1), np.std(post1)
             dist_gp[i] = 'normal'
             hyper_gp[i] = [mu, sig]#, hyper_gp[i][0], hyper_gp[i][1]]
     # Same goes for mflux and sigma_w
     for i in range(len(par_ins)):
         if dist_ins[i] != 'fixed':
             post1 = res_gp_only.posteriors['posterior_samples'][par_ins[i]]
-            mu, sig = np.median(post1), 2*np.std(post1)
+            mu, sig = np.median(post1), np.std(post1)
             dist_ins[i] = 'normal'
             hyper_ins[i] = [mu, sig]#, hyper_ins[i][0], hyper_ins[i][1]]
     # Planetary parameters
