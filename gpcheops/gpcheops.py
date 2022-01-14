@@ -678,7 +678,13 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
         # juliet best fit model
         model = results_full.lc.evaluate(instruments[i])
         # juliet best fit gp model
-        gp_model = results_full.lc.model[instruments[i]]['GP']
+        if not jointGP:
+            gp_model = results_full.lc.model[instruments[i]]['GP']
+        else:
+            inst1 = ''
+            for k in instruments:
+                inst1 = inst1 + '_' + k
+            gp_model = results_full.lc.model[inst1[1:]]['GP']
         # juliet best fit transit model and its errors
         transit_model = results_full.lc.model[instruments[i]]['deterministic']
         transit_model_err = results_full.lc.model[instruments[i]]['deterministic_errors']
