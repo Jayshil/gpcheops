@@ -487,7 +487,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
     print('   FINAL_ANALYSIS_' + instrument + ' folder in out_path.')
 
 
-def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='ExM', sampler='dynesty', verbose=True):
+def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='ExM', jointGP=False, sampler='dynesty', verbose=True):
     """
     This function will analyse multiple visits analysed
     by multiple_params_decorr function
@@ -507,6 +507,9 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
         On which GP kernel to use. ExM for Exponential-Matern kernel
         QP for quasi-periodic kernel, SHO for Simple Harmonic Oscillator kernel
         Default is ExM
+    jointGP : bool
+        boolean on whether to provide a joint GP priors on each intruments
+        default is False
     sampler : str
         sampler to be used in posterior estimation
         a valid choices are 'multinest', 'dynesty', 'dynamic_dynesty', or 'ultranest'
@@ -546,18 +549,19 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
                 hyper_gp.append([mu, sig])
         """
         # GP parameters
-        if GP == 'ExM':
-            par_gp = par_gp + ['GP_sigma_' + instrument, 'GP_timescale_' + instrument, 'GP_rho_' + instrument]
-            dist_gp = dist_gp + ['loguniform', 'loguniform', 'loguniform']
-            hyper_gp = hyper_gp + [[1e-5, 10000.], [1e-3, 1e2], [1e-3, 1e2]]
-        elif GP == 'QP':
-            par_gp = par_gp + ['GP_B_' + instrument, 'GP_C_' + instrument, 'GP_L_' + instrument, 'GP_Prot_' + instrument]
-            dist_gp = dist_gp + ['loguniform', 'loguniform', 'loguniform','loguniform']
-            hyper_gp = hyper_gp + [[1e-5,1e4], [1e-5,1e4], [1e-5, 1e4], [1.,1e2]]
-        elif GP == 'SHO':
-            par_gp = par_gp + ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
-            dist_gp = dist_gp + ['uniform', 'uniform', 'fixed']
-            hyper_gp = hyper_gp + [[np.exp(-40.), np.exp(0.)], [np.exp(-10.), np.exp(10.)], np.exp(1/np.sqrt(2))]
+        if not jointGP:
+            if GP == 'ExM':
+                par_gp = par_gp + ['GP_sigma_' + instrument, 'GP_timescale_' + instrument, 'GP_rho_' + instrument]
+                dist_gp = dist_gp + ['loguniform', 'loguniform', 'loguniform']
+                hyper_gp = hyper_gp + [[1e-5, 10000.], [1e-3, 1e2], [1e-3, 1e2]]
+            elif GP == 'QP':
+                par_gp = par_gp + ['GP_B_' + instrument, 'GP_C_' + instrument, 'GP_L_' + instrument, 'GP_Prot_' + instrument]
+                dist_gp = dist_gp + ['loguniform', 'loguniform', 'loguniform','loguniform']
+                hyper_gp = hyper_gp + [[1e-5,1e4], [1e-5,1e4], [1e-5, 1e4], [1.,1e2]]
+            elif GP == 'SHO':
+                par_gp = par_gp + ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
+                dist_gp = dist_gp + ['uniform', 'uniform', 'fixed']
+                hyper_gp = hyper_gp + [[np.exp(-40.), np.exp(0.)], [np.exp(-10.), np.exp(10.)], np.exp(1/np.sqrt(2))]
         # instrumental priors
         # mdilution
         par_ins.append('mdilution_' + instrument)
@@ -596,6 +600,29 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
         tim_lc2, fl_lc2, fle_lc2 = tim_lc[mask], fl_lc[mask], fle_lc[mask]
         tim_oot[instrument], fl_oot[instrument], fle_oot[instrument] = tim_lc2, fl_lc2, fle_lc2
     # So, now, we have data from multiple instruments and corresponding priors
+    # If joint GP priors has to be provided
+    if jointGP:
+        if GP == 'ExM':
+            par1, par2, par3 = 'GP_sigma', 'GP_timescale', 'GP_rho'
+            for k in instruments:
+                par1, par2, par3 = par1 + '_' + k, par2 + '_' + k, par3 + '_' + k
+            par_gp = [par1, par2, par3]
+            dist_gp = ['loguniform', 'loguniform', 'loguniform']
+            hyper_gp = [[1e-5, 10000.], [1e-3, 1e2], [1e-3, 1e2]]
+        elif GP == 'QP':
+            par1, par2, par3, par4 = 'GP_B', 'GP_C', 'GP_L', 'GP_Prot'
+            for k in instruments:
+                par1, par2, par3, par4 = par1 + '_' + k, par2 + '_' + k, par3 + '_' + k, par4 + '_' + k
+            par_gp = [par1, par2, par3, par4]
+            dist_gp = ['loguniform', 'loguniform', 'loguniform','loguniform']
+            hyper_gp = [[1e-5,1e4], [1e-5,1e4], [1e-5, 1e4], [1.,1e2]]
+        elif GP == 'SHO':
+            par1, par2, par3 = 'GP_S0', 'GP_omega0', 'GP_Q'
+            for k in instruments:
+                par1, par2, par3 = par1 + '_' + k, par2 + '_' + k, par3 + '_' + k
+            par_gp = [par1, par2, par3]
+            dist_gp = ['uniform', 'uniform', 'fixed']
+            hyper_gp = [[np.exp(-40.), np.exp(0.)], [np.exp(-10.), np.exp(10.)], np.exp(1/np.sqrt(2))]
     ### Folder to save results
     pth1 = Path(out_path + '/FINAL_ANALYSIS_MULT_INSTRUMENT')
     if not pth1.exists():
