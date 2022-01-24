@@ -835,7 +835,7 @@ def corner_plot(folder, planet_only=False):
             t02 = np.floor(p1[lst[i+1]])
             cd1 = p1[lst[i+1]] - t02
             cd = np.vstack((cd, cd1))
-            lst[i+1] = lst[i+1] + ' - ' + str(t01)
+            lst[i+1] = lst[i+1] + ' - ' + str(t02)
         elif 'fp' in lst[i+1].split('_'):
             cd = np.vstack((cd, p1[lst[i+1]]*1e6))
             lst[i+1] = lst[i+1] + ' (in ppm)'
