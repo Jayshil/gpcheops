@@ -19,7 +19,7 @@ def regress(x):
     return (x - np.mean(x))/np.sqrt(np.var(x))
 
 
-def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=os.getcwd(), sampler='dynesty', save=True, verbose=True):
+def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=os.getcwd(), sampler='dynesty', save=True, oot_method='single', verbose=True):
     """
     This function do the transit light curve analysis with
     lightcurve decorrelation done against a given parameter.
@@ -59,6 +59,12 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         and the best fitted GP model to it. 2) Full model fitted 3) best 
         fitted transit model.
         default is True
+    oot_method : str
+        Which method to be use for selecting out-of-transit/eclipse (or joint) points
+        default is single-- this method takes transit duration and and discard points
+                            out of this time. Best to use for single transit/eclipse.
+        another option is multi -- which uses phase-space to discard out-of-transit/eclipse
+                                   points. Can be used with single/multiple transit/eclipse events.
     verbose : bool
         boolean on whether to print progress of analysis
         default is true
@@ -95,17 +101,29 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
             eclipse = True
         if j[0:2] == 'q1':
             transit = True
-    if eclipse and not transit:
-        mask = np.where(tim > (T0 + (per4/2) + (t14/2)))[0]
-        mask = np.hstack((np.where(tim < (T0 + (per4/2) - (t14/2)))[0], mask))
-    elif transit and not eclipse:
-        mask = np.where(tim > (T0 + (t14/2)))[0]
-        mask = np.hstack((np.where(tim < (T0 - (t14/2)))[0], mask))
-    elif transit and eclipse:
-        mask = np.where(tim > (T0 + (t14/2)))[0]
-        mask = np.hstack((np.where(tim < (T0 - (t14/2)))[0], mask))
-        mask = np.hstack((np.where(tim < (T0 + (per4/2) + (t14/2)))[0], mask))
-        mask = np.hstack((np.where(tim < (T0 + (per4/2) - (t14/2)))[0], mask))
+    if oot_method == 'single':
+        if eclipse and not transit:
+            mask = np.where(tim > (T0 + (per4/2) + (t14/2)))[0]
+            mask = np.hstack((np.where(tim < (T0 + (per4/2) - (t14/2)))[0], mask))
+        elif transit and not eclipse:
+            mask = np.where(tim > (T0 + (t14/2)))[0]
+            mask = np.hstack((np.where(tim < (T0 - (t14/2)))[0], mask))
+        elif transit and eclipse:
+            mask = np.where(tim > (T0 + (t14/2)))[0]
+            mask = np.hstack((np.where(tim < (T0 - (t14/2)))[0], mask))
+            mask = np.hstack((np.where(tim < (T0 + (per4/2) + (t14/2)))[0], mask))
+            mask = np.hstack((np.where(tim < (T0 + (per4/2) - (t14/2)))[0], mask))
+    elif oot_method == 'multi':
+        phs_t = juliet.utils.get_phases(tim, per4, T0)
+        phs_e = juliet.utils.get_phases(tim, per4, (T0+(per4/2)))
+        if eclipse and not transit:
+            mask = np.where(np.abs(phs_e*per4) >= t14*0.2)[0]
+        elif transit and not eclipse:
+            mask = np.where(np.abs(phs_t*per4) >= t14*0.2)[0]
+        elif transit and eclipse:
+            mask = np.where((np.abs(phs_e*per4) >= t14*0.2)&(np.abs(phs_t*per4) >= t14*0.2))[0]
+    else:
+        raise Exception('Method to discard out-of-transit/eclipse points can only be "sinle" or "multi".')
     
     # Out-of-transit data
     tim_oot, fl_oot, fle_oot, param_oot = {}, {}, {}, {}
@@ -138,6 +156,8 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         params_gp = ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
         dist_gp = ['uniform', 'uniform', 'fixed']
         hyper_gp = [[np.exp(-40.), np.exp(0.)], [np.exp(-10.), np.exp(10.)], np.exp(1/np.sqrt(2))]
+    else:
+        raise Exception('GP method can only be ExM, QP or SHO.')
     # Total priors
     params_gp_only = params_ins + params_gp
     dist_gp_only = dist_ins + dist_gp
@@ -487,7 +507,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
     print('   FINAL_ANALYSIS_' + instrument + ' folder in out_path.')
 
 
-def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='ExM', jointGP=False, sampler='dynesty', verbose=True):
+def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='ExM', jointGP=False, sampler='dynesty', oot_method='single', verbose=True):
     """
     This function will analyse multiple visits analysed
     by multiple_params_decorr function
@@ -514,6 +534,12 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
         sampler to be used in posterior estimation
         a valid choices are 'multinest', 'dynesty', 'dynamic_dynesty', or 'ultranest'
         default is 'dynesty'
+    oot_method : str
+        Which method to be use for selecting out-of-transit/eclipse (or joint) points
+        default is single-- this method takes transit duration and and discard points
+                            out of this time. Best to use for single transit/eclipse.
+        another option is multi -- which uses phase-space to discard out-of-transit/eclipse
+                                   points. Can be used with single/multiple transit/eclipse events.
     verbose : bool
         boolean on whether to print progress of analysis
         default is true
@@ -586,17 +612,29 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
                 eclipse = True
             if k[0:2] == 'q1':
                 transit = True
-        if transit and not eclipse:
-            mask = np.where(tim_lc > (t01 + (t14/2)))[0]
-            mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
-        if eclipse and not transit:
-            mask = np.where(tim_lc > (t01 + (p01/2) + (t14/2)))[0]
-            mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) - (t14/2)))[0], mask))
-        if eclipse and transit:
-            mask = np.where(tim_lc > (t01 + (t14/2)))[0]
-            mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
-            mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) + (t14/2)))[0], mask))
-            mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) - (t14/2)))[0], mask))
+        if oot_method == 'single':
+            if transit and not eclipse:
+                mask = np.where(tim_lc > (t01 + (t14/2)))[0]
+                mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
+            if eclipse and not transit:
+                mask = np.where(tim_lc > (t01 + (p01/2) + (t14/2)))[0]
+                mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) - (t14/2)))[0], mask))
+            if eclipse and transit:
+                mask = np.where(tim_lc > (t01 + (t14/2)))[0]
+                mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
+                mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) + (t14/2)))[0], mask))
+                mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) - (t14/2)))[0], mask))
+        elif oot_method == 'multi':
+            phs_t = juliet.utils.get_phases(tim, p01, t01)
+            phs_e = juliet.utils.get_phases(tim, p01, (t01+(p01/2)))
+            if eclipse and not transit:
+                mask = np.where(np.abs(phs_e*p01) >= t14*0.2)[0]
+            elif transit and not eclipse:
+                mask = np.where(np.abs(phs_t*p01) >= t14*0.2)[0]
+            elif transit and eclipse:
+                mask = np.where((np.abs(phs_e*p01) >= t14*0.2)&(np.abs(phs_t*p01) >= t14*0.2))[0]
+        else:
+            raise Exception('Method to discard out-of-transit/eclipse points can only be "sinle" or "multi".')
         tim_lc2, fl_lc2, fle_lc2 = tim_lc[mask], fl_lc[mask], fle_lc[mask]
         tim_oot[instrument], fl_oot[instrument], fle_oot[instrument] = tim_lc2, fl_lc2, fle_lc2
     # So, now, we have data from multiple instruments and corresponding priors
@@ -623,6 +661,8 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
             par_gp = [par1, par2, par3]
             dist_gp = ['uniform', 'uniform', 'fixed']
             hyper_gp = [[np.exp(-40.), np.exp(0.)], [np.exp(-10.), np.exp(10.)], np.exp(1/np.sqrt(2))]
+        else:
+            raise Exception('GP method can only be ExM, QP or SHO.')
     ### Folder to save results
     pth1 = Path(out_path + '/FINAL_ANALYSIS_MULT_INSTRUMENT')
     if not pth1.exists():
