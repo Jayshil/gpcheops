@@ -832,7 +832,7 @@ def corner_plot(folder, planet_only=False):
         cd = p1[lst[0]]
     for i in range(len(lst)-1):
         if 't0' in lst[i+1].split('_'):
-            t02 = np.floor(p1[lst[i+1]])
+            t02 = np.floor(p1[lst[i+1]][0])
             cd1 = p1[lst[i+1]] - t02
             cd = np.vstack((cd, cd1))
             lst[i+1] = lst[i+1] + ' - ' + str(t02)
