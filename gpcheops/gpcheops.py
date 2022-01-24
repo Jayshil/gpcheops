@@ -450,10 +450,10 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
             tim4, fl4, fle4 = {}, {}, {}
             tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
             ln_z = single_param_decorr(tim=tim4, fl=fl4, fle=fle4, param=par_decor,\
-                plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, save=False, oot_method='single')
+                plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, oot_method=oot_method, save=False)
         else:
             ln_z = single_param_decorr(tim=tim, fl=fl, fle=fle, param=par_decor,\
-                plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, save=False, oot_method='single')
+                plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, oot_method=oot_method, save=False)
         print('-----------------------------')
         print('The instrument is: ', instrument)
         print('The last ln(Z) was (for the parameter ' + last_used_param + '): {:.4f}'.format(lnZ))
@@ -466,13 +466,13 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
                 tim4, fl4, fle4 = {}, {}, {}
                 tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
                 ln_z = single_param_decorr(tim=tim4, fl=fl4, fle=fle4, param=par_decor,\
-                    plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, save=True, oot_method='single')
+                    plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, oot_method=oot_method, save=True)
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
             else:
                 ln_z = single_param_decorr(tim=tim, fl=fl, fle=fle, param=par_decor,\
-                    plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, save=True, oot_method='single')
+                    plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, oot_method=oot_method, save=True)
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
