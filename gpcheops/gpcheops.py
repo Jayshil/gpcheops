@@ -117,11 +117,11 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         phs_t = juliet.utils.get_phases(tim, per4, T0)
         phs_e = juliet.utils.get_phases(tim, per4, (T0+(per4/2)))
         if eclipse and not transit:
-            mask = np.where(np.abs(phs_e*per4) >= t14*0.2)[0]
+            mask = np.where(np.abs(phs_e*per4) >= t14)[0]
         elif transit and not eclipse:
-            mask = np.where(np.abs(phs_t*per4) >= t14*0.2)[0]
+            mask = np.where(np.abs(phs_t*per4) >= t14)[0]
         elif transit and eclipse:
-            mask = np.where((np.abs(phs_e*per4) >= t14*0.2)&(np.abs(phs_t*per4) >= t14*0.2))[0]
+            mask = np.where((np.abs(phs_e*per4) >= t14)&(np.abs(phs_t*per4) >= t14))[0]
     else:
         raise Exception('Method to discard out-of-transit/eclipse points can only be "sinle" or "multi".')
     
@@ -629,11 +629,11 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
             phs_t = juliet.utils.get_phases(tim, p01, t01)
             phs_e = juliet.utils.get_phases(tim, p01, (t01+(p01/2)))
             if eclipse and not transit:
-                mask = np.where(np.abs(phs_e*p01) >= t14*0.2)[0]
+                mask = np.where(np.abs(phs_e*p01) >= t14)[0]
             elif transit and not eclipse:
-                mask = np.where(np.abs(phs_t*p01) >= t14*0.2)[0]
+                mask = np.where(np.abs(phs_t*p01) >= t14)[0]
             elif transit and eclipse:
-                mask = np.where((np.abs(phs_e*p01) >= t14*0.2)&(np.abs(phs_t*p01) >= t14*0.2))[0]
+                mask = np.where((np.abs(phs_e*p01) >= t14)&(np.abs(phs_t*p01) >= t14))[0]
         else:
             raise Exception('Method to discard out-of-transit/eclipse points can only be "sinle" or "multi".')
         tim_lc2, fl_lc2, fle_lc2 = tim_lc[mask], fl_lc[mask], fle_lc[mask]
