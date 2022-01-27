@@ -124,7 +124,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         elif transit and eclipse:
             mask = np.where((np.abs(phs_e*per4) >= t14)&(np.abs(phs_t*per4) >= t14))[0]
     else:
-        raise Exception('Method to discard out-of-transit/eclipse points can only be "sinle" or "multi".')
+        raise Exception('Method to discard out-of-transit/eclipse points can only be "single" or "multi".')
     
     # Out-of-transit data
     tim_oot, fl_oot, fle_oot, param_oot = {}, {}, {}, {}
@@ -616,7 +616,7 @@ def multiple_visits(input_folders, plan_params, t14, oot_method, out_path=os.get
                 eclipse = True
             if k[0:2] == 'q1':
                 transit = True
-        if oot_method == oot_method[i]:
+        if oot_method[i] == 'single':
             if transit and not eclipse:
                 mask = np.where(tim_lc > (t01 + (t14/2)))[0]
                 mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
@@ -628,7 +628,7 @@ def multiple_visits(input_folders, plan_params, t14, oot_method, out_path=os.get
                 mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
                 mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) + (t14/2)))[0], mask))
                 mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) - (t14/2)))[0], mask))
-        elif oot_method == oot_method[i]:
+        elif oot_method[i] == 'multi':
             phs_t = juliet.utils.get_phases(tim, p01, t01)
             phs_e = juliet.utils.get_phases(tim, p01, (t01+(p01/2)))
             if eclipse and not transit:
@@ -638,7 +638,7 @@ def multiple_visits(input_folders, plan_params, t14, oot_method, out_path=os.get
             elif transit and eclipse:
                 mask = np.where((np.abs(phs_e*p01) >= t14)&(np.abs(phs_t*p01) >= t14))[0]
         else:
-            raise Exception('Method to discard out-of-transit/eclipse points can only be "sinle" or "multi".')
+            raise Exception('Method to discard out-of-transit/eclipse points can only be "single" or "multi".')
         tim_lc2, fl_lc2, fle_lc2 = tim_lc[mask], fl_lc[mask], fle_lc[mask]
         tim_oot[instrument], fl_oot[instrument], fle_oot[instrument] = tim_lc2, fl_lc2, fle_lc2
     # So, now, we have data from multiple instruments and corresponding priors
