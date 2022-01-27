@@ -509,7 +509,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
     print('   FINAL_ANALYSIS_' + instrument + ' folder in out_path.')
 
 
-def multiple_visits(input_folders, plan_params, t14, oot_method, out_path=os.getcwd(), GP='ExM', jointGP=False, sampler='dynesty', verbose=True):
+def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, out_path=os.getcwd(), GP='ExM', jointGP=False, sampler='dynesty', verbose=True):
     """
     This function will analyse multiple visits analysed
     by multiple_params_decorr function
@@ -518,6 +518,9 @@ def multiple_visits(input_folders, plan_params, t14, oot_method, out_path=os.get
     -----------
     input_folders : list
         list containing folders analysed by multiple_params_decorr
+    instruments : list
+        list of the instruments
+        The name of the instruments should be in the same order as that of the `input_folders`
     plan_params : dict
         juliet readable planetary priors
     t14 : float
@@ -555,11 +558,14 @@ def multiple_visits(input_folders, plan_params, t14, oot_method, out_path=os.get
     par_ins, dist_ins, hyper_ins = [], [], []
     # Saving the instruments
     if len(input_folders) != len(oot_method):
-        raise Exception('Not enough `oot-method` was provided for total input folders, or\n Not enough folders for `oot-method`.')
-    instruments = []
+        raise Exception('Not enough `oot-method` were provided for total input folders, or\n\t\t Not enough folders for `oot-method`.')
+    if len(input_folders) != len(instruments):
+        raise Exception('Not enough instruments were provided for total input folders, or\n\t\t Not enough folders for instruments.')
+    if len(oot_method) != len(instruments):
+        raise Exception('Not enough `oot-method` was provided for total instruments, or\n\t\t Not enough instruments for `oot-method`.')
     for i in range(len(input_folders)):
-        instrument = input_folders[i].split('_')[-1]
-        instruments.append(instrument)
+        instrument = instruments[i]
+        #instruments.append(instrument)
         # Saving decorrelated data
         data_lc = glob(input_folders[i] + '/*_decorrelated_photometry.dat')[0]
         tim_lc, fl_lc, fle_lc = np.loadtxt(data_lc, usecols=(0,1,2), unpack=True)
