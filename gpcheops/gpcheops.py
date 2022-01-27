@@ -9,6 +9,7 @@ from glob import glob
 import pickle
 from scipy.interpolate import CubicSpline
 import corner
+from matplotlib.gridspec import GridSpec
 
 
 def regress(x):
@@ -859,3 +860,39 @@ def corner_plot(folder, planet_only=False):
             ax.plot(value[xi], value[yi], 'sr')
 
     fig.savefig(folder + "/corner.pdf")
+
+def correlation_plot(params, flx, flxe, out_folder=os.getcwd()):
+    """
+    This function will generate trend of flux 
+    with various decorrelation parameters
+    -----------------------------------------
+    Parameters:
+    -----------
+    params : dict
+        dictionary containing decorrelation parameters
+    flx : dict
+        dictionary containing flux
+    flxe : dict
+        dictionary containing errors in flux
+    out_folder : str
+        location where to save the plots
+    -----------
+    return
+    -----------
+    .png file
+        saved plot
+    """
+    # Decorrelation parameters
+    pnames = list(params.keys())
+    nms = len(pnames)
+    # Instrument name
+    instrument = list(flx.keys())[0]
+
+    fig = plt.figure(figsize=(16,9))
+    gs = GridSpec(nms, 1)#, width_ratios=[1, 2], height_ratios=[4, 1])
+    for i in range(nms):
+        ax1 = fig.add_subplot(gs[i])
+        ax1.errorbar(params[pnames[i]], flx[instrument], yerr=flxe[instrument], fmt='.', label=pnames[i])
+        ax1.set_ylabel('Trend with ' + pnames[i])
+
+    plt.savefig(out_folder + '/correlation_plot.png')
