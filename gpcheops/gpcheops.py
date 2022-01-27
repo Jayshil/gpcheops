@@ -509,7 +509,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
     print('   FINAL_ANALYSIS_' + instrument + ' folder in out_path.')
 
 
-def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='ExM', jointGP=False, sampler='dynesty', oot_method='single', verbose=True):
+def multiple_visits(input_folders, plan_params, t14, oot_method, out_path=os.getcwd(), GP='ExM', jointGP=False, sampler='dynesty', verbose=True):
     """
     This function will analyse multiple visits analysed
     by multiple_params_decorr function
@@ -522,6 +522,12 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
         juliet readable planetary priors
     t14 : float
         transit duration in days
+    oot_method : list
+        Which method to be use for selecting out-of-transit/eclipse (or joint) points for each folder
+        one option is single-- this method takes transit duration and and discard points
+                            out of this time. Best to use for single transit/eclipse.
+        another option is multi -- which uses phase-space to discard out-of-transit/eclipse
+                                   points. Can be used with single/multiple transit/eclipse events.
     out_path : str
         path to the output folder
         default is the present working directory
@@ -536,12 +542,6 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
         sampler to be used in posterior estimation
         a valid choices are 'multinest', 'dynesty', 'dynamic_dynesty', or 'ultranest'
         default is 'dynesty'
-    oot_method : str
-        Which method to be use for selecting out-of-transit/eclipse (or joint) points
-        default is single-- this method takes transit duration and and discard points
-                            out of this time. Best to use for single transit/eclipse.
-        another option is multi -- which uses phase-space to discard out-of-transit/eclipse
-                                   points. Can be used with single/multiple transit/eclipse events.
     verbose : bool
         boolean on whether to print progress of analysis
         default is true
@@ -554,6 +554,8 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
     # instrumental priors
     par_ins, dist_ins, hyper_ins = [], [], []
     # Saving the instruments
+    if len(input_folders) != len(oot_method):
+        raise Exception('Not enough `oot-method` was provided for total input folders, or\n Not enough folders for `oot-method`.')
     instruments = []
     for i in range(len(input_folders)):
         instrument = input_folders[i].split('_')[-1]
@@ -614,7 +616,7 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
                 eclipse = True
             if k[0:2] == 'q1':
                 transit = True
-        if oot_method == 'single':
+        if oot_method == oot_method[i]:
             if transit and not eclipse:
                 mask = np.where(tim_lc > (t01 + (t14/2)))[0]
                 mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
@@ -626,7 +628,7 @@ def multiple_visits(input_folders, plan_params, t14, out_path=os.getcwd(), GP='E
                 mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
                 mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) + (t14/2)))[0], mask))
                 mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) - (t14/2)))[0], mask))
-        elif oot_method == 'multi':
+        elif oot_method == oot_method[i]:
             phs_t = juliet.utils.get_phases(tim, p01, t01)
             phs_e = juliet.utils.get_phases(tim, p01, (t01+(p01/2)))
             if eclipse and not transit:
