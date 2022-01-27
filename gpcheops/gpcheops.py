@@ -635,8 +635,8 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
                 mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) + (t14/2)))[0], mask))
                 mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) - (t14/2)))[0], mask))
         elif oot_method[i] == 'multi':
-            phs_t = juliet.utils.get_phases(tim, p01, t01)
-            phs_e = juliet.utils.get_phases(tim, p01, (t01+(p01/2)))
+            phs_t = juliet.utils.get_phases(tim_lc, p01, t01)
+            phs_e = juliet.utils.get_phases(tim_lc, p01, (t01+(p01/2)))
             if eclipse and not transit:
                 mask = np.where(np.abs(phs_e*p01) >= t14)[0]
             elif transit and not eclipse:
