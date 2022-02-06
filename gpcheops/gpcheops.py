@@ -152,7 +152,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     elif GP == 'QP':
         params_gp = ['GP_B_' + instrument, 'GP_C_' + instrument, 'GP_L_' + instrument, 'GP_Prot_' + instrument]
         dist_gp = ['loguniform', 'loguniform', 'loguniform','loguniform']
-        hyper_gp = [[1e-5,1e4], [1e-5,1e4], [1e-5, 1e4], [1.,1e2]]
+        hyper_gp = [[1e-5,1e3], [1e-5,1e4], [1e-3, 1e3], [1.,1e2]]
     elif GP == 'SHO':
         params_gp = ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
         dist_gp = ['uniform', 'uniform', 'fixed']
@@ -593,7 +593,7 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
             elif GP == 'QP':
                 par_gp = par_gp + ['GP_B_' + instrument, 'GP_C_' + instrument, 'GP_L_' + instrument, 'GP_Prot_' + instrument]
                 dist_gp = dist_gp + ['loguniform', 'loguniform', 'loguniform','loguniform']
-                hyper_gp = hyper_gp + [[1e-5,1e4], [1e-5,1e4], [1e-5, 1e4], [1.,1e2]]
+                hyper_gp = hyper_gp + [[1e-5,1e3], [1e-5,1e4], [1e-3, 1e3], [1.,1e2]]
             elif GP == 'SHO':
                 par_gp = par_gp + ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
                 dist_gp = dist_gp + ['uniform', 'uniform', 'fixed']
