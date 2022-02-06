@@ -333,7 +333,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
 
         # Top panel
         ax1 = plt.subplot(gs[0])
-        ax1.errorbar(tim[instrument], (fl[instrument]-gp_model)*fac, yerr=fle[instrument], fmt='.', alpha=0.3)
+        ax1.errorbar(tim[instrument], (fl[instrument]-gp_model)*fac, yerr=fle[instrument]*fac, fmt='.', alpha=0.3)
         #ax1.plot(tim[instrument], transit_model*fac, c='k', zorder=100)
         ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
         #ax1.fill_between(tim[instrument], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
@@ -343,7 +343,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
 
         # Bottom panel
         ax2 = plt.subplot(gs[1])
-        ax2.errorbar(tim[instrument], (fl[instrument]-gp_model-transit_model)*1e6*fac, yerr=fle[instrument]*1e6, fmt='.', alpha=0.3)
+        ax2.errorbar(tim[instrument], (fl[instrument]-gp_model-transit_model)*1e6*fac, yerr=fle[instrument]*fac*1e6, fmt='.', alpha=0.3)
         ax2.axhline(y=0.0, c='black', ls='--')
         ax2.set_ylabel('Residuals (ppm)')
         ax2.set_xlabel('Time (BJD)')
@@ -359,7 +359,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
 
     ## Decorrelating!!
     if save:
-        tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument]
+        tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument]*fac
         f1 = open(out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param + '/' + nm_param + '_decorrelated_photometry.dat','w')
         for i in range(len(tim[instrument])):
             f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
@@ -773,7 +773,7 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
 
         # Top panel
         ax1 = plt.subplot(gs[0])
-        ax1.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model)*fac, yerr=fle[instruments[i]], fmt='.', alpha=0.3)
+        ax1.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model)*fac, yerr=fle[instruments[i]]*fac, fmt='.', alpha=0.3)
         #ax1.plot(tim[instruments[i]], transit_model*fac, c='k', zorder=100)
         ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
         #ax1.fill_between(tim[instruments[i]], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
@@ -783,7 +783,7 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
 
         # Bottom panel
         ax2 = plt.subplot(gs[1])
-        ax2.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model-transit_model)*1e6*fac, yerr=fle[instruments[i]]*1e6, fmt='.', alpha=0.3)
+        ax2.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model-transit_model)*1e6*fac, yerr=fle[instruments[i]]*fac*1e6, fmt='.', alpha=0.3)
         ax2.axhline(y=0.0, c='black', ls='--')
         ax2.set_ylabel('Residuals (ppm)')
         ax2.set_xlabel('Time (BJD)')
