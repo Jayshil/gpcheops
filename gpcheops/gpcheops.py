@@ -688,7 +688,10 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
     ## Running GP only fit
     data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=tim_oot,\
          out_folder=pth1 + '/oot')
-    res_gp_only = data.fit(sampler = sampler, n_live_points=500, verbose = verbose)
+    if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
+        res_gp_only = data.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = 4)
+    else:
+        res_gp_only = data.fit(sampler = sampler, n_live_points=500, verbose = verbose)
 
     ## Full data fit
     ## Defining priors
@@ -721,7 +724,10 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
     # Running the whole fit
     data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=tim,\
          out_folder=pth1)
-    results_full = data_full.fit(sampler = sampler, n_live_points=500, verbose=True)
+    if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
+        results_full = data_full.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = 4)
+    else:
+        results_full = data_full.fit(sampler = sampler, n_live_points=500, verbose=True)
 
     for i in range(len(instruments)):
         ### Evaluating the fitted model
