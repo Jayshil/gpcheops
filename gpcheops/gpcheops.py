@@ -38,10 +38,16 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         is to be used
     t14 : float
         transit duration
-    GP : str
-        On which GP kernel to use. ExM for Exponential-Matern kernel
-        QP for quasi-periodic kernel, SHO for Simple Harmonic Oscillator kernel
+    GP : str or dict
+        -- On which GP kernel to use. ExM for Exponential-Matern kernel
+           QP for quasi-periodic kernel, SHO for Simple Harmonic Oscillator kernel
+        -- If the type of the inpute provided in dict, then it means that the user
+           decided to provide GP priors manually instead of the default ones.
+           Trick is to use, "manual_gp_priors()" from gpcheops.utils, to provide
+           name of the GP parameters, distribution and their values, and use output 
+           from this function here.
         Default is ExM
+
     out_path : str
         output path of the analysed files
         note that everything will be saved in different folders
@@ -157,8 +163,12 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         params_gp = ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
         dist_gp = ['uniform', 'uniform', 'fixed']
         hyper_gp = [[np.exp(-40.), np.exp(0.)], [np.exp(-10.), np.exp(10.)], np.exp(1/np.sqrt(2))]
+    elif type(GP) == dict:
+        params_gp = GP['params']
+        dist_gp = GP['dists']
+        hyper_gp = GP['hyper']
     else:
-        raise Exception('GP method can only be ExM, QP or SHO.')
+        raise Exception('GP method can only be ExM, QP or SHO.\n Or it can be a dictionary')
     # Total priors
     params_gp_only = params_ins + params_gp
     dist_gp_only = dist_ins + dist_gp
@@ -390,9 +400,14 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
         is to be used
     t14 : float
         transit duration
-    GP : str
-        On which GP kernel to use. ExM for Exponential-Matern kernel
-        QP for quasi-periodic kernel, SHO for Simple Harmonic Oscillator kernel
+    GP : str, or dict
+        -- On which GP kernel to use. ExM for Exponential-Matern kernel
+           QP for quasi-periodic kernel, SHO for Simple Harmonic Oscillator kernel
+        -- Or the GP priors can be provided directly, instead of using default ones.
+           This can be done by supplying dictionary to GP keyword argument.
+           User can choose to provide different priors to different decorrelation parameters.
+           User should use "manual_multi_gp_priors()" function from gpcheops.utils to create
+           the dictionary to ingest this function.
         Default is ExM
     sampler : str
         sampler to be used in posterior estimation
@@ -445,16 +460,23 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
         par_decor1 = params[nm_decor]
         par_decor = {}
         par_decor[nm_decor] = par_decor1
+        if type(GP) == dict:
+            try:
+                GP1 = GP[nm_decor]
+            except:
+                GP1 = input('No manual GP priors are provided for ' + nm_decor + '\nPlese select kernel from ExM, QP or SHO to use default GP priors: ')
+        else:
+            GP1 = GP
         if len(params_used) != 0:
             tim3, fl3, fle3 = np.loadtxt(out_path + '/juliet_'+ instrument +'/juliet_full_' + last_used_param + '/' + last_used_param + '_decorrelated_photometry.dat',\
                 usecols=(0,1,2), unpack=True)
             tim4, fl4, fle4 = {}, {}, {}
             tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
             ln_z = single_param_decorr(tim=tim4, fl=fl4, fle=fle4, param=par_decor,\
-                plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, oot_method=oot_method, save=False)
+                plan_params=plan_params, t14=t14, GP=GP1, out_path=out_path, sampler=sampler, verbose=verbose, oot_method=oot_method, save=False)
         else:
             ln_z = single_param_decorr(tim=tim, fl=fl, fle=fle, param=par_decor,\
-                plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, oot_method=oot_method, save=False)
+                plan_params=plan_params, t14=t14, GP=GP1, out_path=out_path, sampler=sampler, verbose=verbose, oot_method=oot_method, save=False)
         print('-----------------------------')
         print('The instrument is: ', instrument)
         print('The last ln(Z) was (for the parameter ' + last_used_param + '): {:.4f}'.format(lnZ))
@@ -467,13 +489,13 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
                 tim4, fl4, fle4 = {}, {}, {}
                 tim4[instrument], fl4[instrument], fle4[instrument] = tim3, fl3, fle3
                 ln_z = single_param_decorr(tim=tim4, fl=fl4, fle=fle4, param=par_decor,\
-                    plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, oot_method=oot_method, save=True)
+                    plan_params=plan_params, t14=t14, GP=GP1, out_path=out_path, sampler=sampler, verbose=verbose, oot_method=oot_method, save=True)
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
             else:
                 ln_z = single_param_decorr(tim=tim, fl=fl, fle=fle, param=par_decor,\
-                    plan_params=plan_params, t14=t14, GP=GP, out_path=out_path, sampler=sampler, verbose=verbose, oot_method=oot_method, save=True)
+                    plan_params=plan_params, t14=t14, GP=GP1, out_path=out_path, sampler=sampler, verbose=verbose, oot_method=oot_method, save=True)
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/decorr_' + nm_decor + '.png ' + p1 + '/decorr_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/full_model_' + nm_decor + '.png ' + p1 + '/full_model_' + nm_decor + '.png')
                 #os.system('cp ' + out_path + '/juliet/juliet_full_' + last_used_param + '/transit_model_' + nm_decor + '.png ' + p1 + '/transit_model_' + nm_decor + '.png')
@@ -802,111 +824,3 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
         else:
             plt.savefig(pth1 + '/transit_eclipse_model_' + instruments[i] + '.png')
         plt.close(fig)
-
-def corner_plot(folder, planet_only=False):
-    """
-    This function will generate corner plots of posterios
-    in a given folder
-    -----------------------------------------------------
-    Parameters:
-    -----------
-    folder : str
-        Path of the folder where the .pkl file is located
-    planet_only : bool
-        Boolean on whether to make corner plot of only
-        planetary parameters
-        Default is False
-    -----------
-    return
-    -----------
-    corner plot : .pdf file
-        stored inside folder directory
-    """
-    pcl = glob(folder + '/*.pkl')[0]
-    post = pickle.load(open(pcl, 'rb'), encoding='latin1')
-    p1 = post['posterior_samples']
-    lst = []
-    if not planet_only:
-        for i in p1.keys():
-            gg = i.split('_')
-            if 'p1' in gg or 'mflux' in gg or 'sigma' in gg or 'GP' in gg or 'mdilution' in gg or 'q1' in gg or 'q2' in gg:
-                lst.append(i)
-    else:
-        for i in p1.keys():
-            gg = i.split('_')
-            if 'p1' in gg or 'q1' in gg or 'q2' in gg:
-                lst.append(i)
-    if 't0' in lst[0].split('_'):
-        t01 = np.floor(p1[lst[0]][0])
-        cd = p1[lst[0]] - t01
-        lst[0] = lst[0] + ' - ' + str(t01)
-    elif 'fp' in lst[0].split('_'):
-        cd = p1[lst[0]]*1e6
-        lst[0] = lst[0] + ' (in ppm)'
-    else:
-        cd = p1[lst[0]]
-    for i in range(len(lst)-1):
-        if 't0' in lst[i+1].split('_'):
-            t02 = np.floor(p1[lst[i+1]][0])
-            cd1 = p1[lst[i+1]] - t02
-            cd = np.vstack((cd, cd1))
-            lst[i+1] = lst[i+1] + ' - ' + str(t02)
-        elif 'fp' in lst[i+1].split('_'):
-            cd = np.vstack((cd, p1[lst[i+1]]*1e6))
-            lst[i+1] = lst[i+1] + ' (in ppm)'
-        else:
-            cd = np.vstack((cd, p1[lst[i+1]]))
-    data = np.transpose(cd)
-    value = np.median(data, axis=0)
-    ndim = len(lst)
-    fig = corner.corner(data, labels=lst)
-    axes = np.array(fig.axes).reshape((ndim, ndim))
-
-    for i in range(ndim):
-        ax = axes[i,i]
-        ax.axvline(value[i], color = 'r')
-
-    for yi in range(ndim):
-        for xi in range(yi):
-            ax = axes[yi, xi]
-            ax.axvline(value[xi], color = 'r')
-            ax.axhline(value[yi], color = 'r')
-            ax.plot(value[xi], value[yi], 'sr')
-
-    fig.savefig(folder + "/corner.pdf")
-
-def correlation_plot(params, flx, flxe, out_folder=os.getcwd()):
-    """
-    This function will generate trend of flux 
-    with various decorrelation parameters
-    -----------------------------------------
-    Parameters:
-    -----------
-    params : dict
-        dictionary containing decorrelation parameters
-    flx : dict
-        dictionary containing flux
-    flxe : dict
-        dictionary containing errors in flux
-    out_folder : str
-        location where to save the plots
-    -----------
-    return
-    -----------
-    .png file
-        saved plot
-    """
-    # Decorrelation parameters
-    pnames = list(params.keys())
-    nms = len(pnames)
-    # Instrument name
-    instrument = list(flx.keys())[0]
-
-    fig = plt.figure(figsize=(16,9))
-    gs = GridSpec(nms, 1)#, width_ratios=[1, 2], height_ratios=[4, 1])
-    for i in range(nms):
-        ax1 = fig.add_subplot(gs[i])
-        ax1.errorbar(params[pnames[i]], flx[instrument], yerr=flxe[instrument], fmt='.', label=pnames[i])
-        ax1.set_ylabel('Trend with ' + pnames[i])
-
-    plt.savefig(out_folder + '/correlation_plot.png')
