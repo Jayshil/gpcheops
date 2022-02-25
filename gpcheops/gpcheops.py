@@ -531,7 +531,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
     print('   FINAL_ANALYSIS_' + instrument + ' folder in out_path.')
 
 
-def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, out_path=os.getcwd(), GP='ExM', jointGP=False, sampler='dynesty', verbose=True):
+def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, out_path=os.getcwd(), GP='ExM', jointGP=False, sampler='dynesty', verbose=True, nthreads=None):
     """
     This function will analyse multiple visits analysed
     by multiple_params_decorr function
@@ -711,7 +711,7 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
     data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=tim_oot,\
          out_folder=pth1 + '/oot')
     if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
-        res_gp_only = data.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = 4)
+        res_gp_only = data.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads)
     else:
         res_gp_only = data.fit(sampler = sampler, n_live_points=500, verbose = verbose)
 
