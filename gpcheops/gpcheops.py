@@ -747,7 +747,7 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
     data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=tim,\
          out_folder=pth1)
     if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
-        results_full = data_full.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = 4)
+        results_full = data_full.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads)
     else:
         results_full = data_full.fit(sampler = sampler, n_live_points=500, verbose=True)
 
