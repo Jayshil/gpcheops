@@ -723,8 +723,11 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
     priors = juliet.utils.generate_priors(params_gp_only, dist_gp_only, hyper_gp_only)
 
     ## Running GP only fit
-    data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=tim_oot,\
-         out_folder=pth1 + '/oot')
+    if not noGP:
+        data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=tim_oot,\
+            out_folder=pth1 + '/oot')
+    else:
+        data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, out_folder=pth1 + '/oot')
     if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
         res_gp_only = data.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads)
     else:
@@ -765,8 +768,10 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
     priors = juliet.utils.generate_priors(params, dist, hyper)
 
     # Running the whole fit
-    data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=tim,\
-         out_folder=pth1)
+    if not noGP:
+        data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=tim, out_folder=pth1)
+    else:
+        data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, out_folder=pth1)
     if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
         results_full = data_full.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads)
     else:
