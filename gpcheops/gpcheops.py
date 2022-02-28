@@ -709,29 +709,22 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
     pth1 = Path(out_path + '/FINAL_ANALYSIS_MULT_INSTRUMENT')
     if not pth1.exists():
         os.mkdir(pth1)
-    # We first fit the out of transit data
+    # We first fit the out of transit data only if the GP model is to be included!
     # Total priors
-    if noGP:
-        params_gp_only = par_ins
-        dist_gp_only = dist_ins
-        hyper_gp_only = hyper_ins
-    else:
+    if not noGP:
         params_gp_only = par_ins + par_gp
         dist_gp_only = dist_ins + dist_gp
         hyper_gp_only = hyper_ins + hyper_gp
-    # Populating prior dict
-    priors = juliet.utils.generate_priors(params_gp_only, dist_gp_only, hyper_gp_only)
+        # Populating prior dict
+        priors = juliet.utils.generate_priors(params_gp_only, dist_gp_only, hyper_gp_only)
 
-    ## Running GP only fit
-    if not noGP:
+        ## Running GP only fit
         data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=tim_oot,\
-            out_folder=pth1 + '/oot')
-    else:
-        data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, out_folder=pth1 + '/oot')
-    if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
-        res_gp_only = data.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads)
-    else:
-        res_gp_only = data.fit(sampler = sampler, n_live_points=500, verbose = verbose)
+                out_folder=pth1 + '/oot')
+        if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
+            res_gp_only = data.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads)
+        else:
+            res_gp_only = data.fit(sampler = sampler, n_live_points=500, verbose = verbose)
 
     ## Full data fit
     ## Defining priors
@@ -743,13 +736,12 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
                 mu, sig = np.median(post1), np.std(post1)
                 dist_gp[i] = 'normal'
                 hyper_gp[i] = [mu, sig]#, hyper_gp[i][0], hyper_gp[i][1]]
-    # Same goes for mflux and sigma_w
-    for i in range(len(par_ins)):
-        if dist_ins[i] != 'fixed':
-            post1 = res_gp_only.posteriors['posterior_samples'][par_ins[i]]
-            mu, sig = np.median(post1), np.std(post1)
-            dist_ins[i] = 'normal'
-            hyper_ins[i] = [mu, sig]#, hyper_ins[i][0], hyper_ins[i][1]]
+        for i in range(len(par_ins)):
+            if dist_ins[i] != 'fixed':
+                post1 = res_gp_only.posteriors['posterior_samples'][par_ins[i]]
+                mu, sig = np.median(post1), np.std(post1)
+                dist_ins[i] = 'normal'
+                hyper_ins[i] = [mu, sig]#, hyper_ins[i][0], hyper_ins[i][1]]
     # Planetary parameters
     params_P, dist_P, hyper_P = list(plan_params.keys()), [], []
     for k in plan_params.keys():
