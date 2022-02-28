@@ -531,7 +531,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
     print('   FINAL_ANALYSIS_' + instrument + ' folder in out_path.')
 
 
-def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, out_path=os.getcwd(), GP='ExM', jointGP=False, sampler='dynesty', verbose=True, nthreads=None):
+def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, out_path=os.getcwd(), GP='ExM', jointGP=False, noGP=True, sampler='dynesty', verbose=True, nthreads=None):
     """
     This function will analyse multiple visits analysed
     by multiple_params_decorr function
@@ -563,6 +563,10 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
     jointGP : bool
         boolean on whether to provide a joint GP priors on each intruments
         default is False
+    noGP : bool
+        boolean on whether to use GP in multiple analysis or not
+        default is True
+        Note that to use noGP, one has to make jointGP False.
     sampler : str
         sampler to be used in posterior estimation
         a valid choices are 'multinest', 'dynesty', 'dynamic_dynesty', or 'ultranest'
@@ -607,7 +611,7 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
                 hyper_gp.append([mu, sig])
         """
         # GP parameters
-        if not jointGP:
+        if not jointGP and not noGP:
             if GP == 'ExM':
                 par_gp = par_gp + ['GP_sigma_' + instrument, 'GP_timescale_' + instrument, 'GP_rho_' + instrument]
                 dist_gp = dist_gp + ['loguniform', 'loguniform', 'loguniform']
@@ -620,14 +624,20 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
                 par_gp = par_gp + ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
                 dist_gp = dist_gp + ['uniform', 'uniform', 'fixed']
                 hyper_gp = hyper_gp + [[np.exp(-40.), np.exp(0.)], [np.exp(-10.), np.exp(10.)], np.exp(1/np.sqrt(2))]
+            else:
+                raise Exception('GP method can only be ExM, QP or SHO.')
         # instrumental priors
         # mdilution
         par_ins.append('mdilution_' + instrument)
         dist_ins.append('fixed')
         hyper_ins.append(1.0)
+        # mflux
+        par_ins.append('mflux_' + instrument)
+        dist_ins.append('normal')
+        hyper_ins.append([0.,0.1])
         # mflux and sigma_w
         for j in pp1.keys():
-            if j[0:5] == 'mflux' or j[0:7] == 'sigma_w':
+            if j[0:7] == 'sigma_w':
                 par_ins.append(j)
                 dist_ins.append('normal')
                 mu, sig = np.median(pp1[j]), np.std(pp1[j])
@@ -671,7 +681,7 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
         tim_oot[instrument], fl_oot[instrument], fle_oot[instrument] = tim_lc2, fl_lc2, fle_lc2
     # So, now, we have data from multiple instruments and corresponding priors
     # If joint GP priors has to be provided
-    if jointGP:
+    if jointGP and not noGP:
         if GP == 'ExM':
             par1, par2, par3 = 'GP_sigma', 'GP_timescale', 'GP_rho'
             for k in instruments:
@@ -701,9 +711,14 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
         os.mkdir(pth1)
     # We first fit the out of transit data
     # Total priors
-    params_gp_only = par_ins + par_gp
-    dist_gp_only = dist_ins + dist_gp
-    hyper_gp_only = hyper_ins + hyper_gp
+    if noGP:
+        params_gp_only = par_ins
+        dist_gp_only = dist_ins
+        hyper_gp_only = hyper_ins
+    else:
+        params_gp_only = par_ins + par_gp
+        dist_gp_only = dist_ins + dist_gp
+        hyper_gp_only = hyper_ins + hyper_gp
     # Populating prior dict
     priors = juliet.utils.generate_priors(params_gp_only, dist_gp_only, hyper_gp_only)
 
@@ -718,12 +733,13 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
     ## Full data fit
     ## Defining priors
     # We would take instrumental priors from our previous fit
-    for i in range(len(par_gp)):
-        if dist_gp[i] != 'fixed':
-            post1 = res_gp_only.posteriors['posterior_samples'][par_gp[i]]
-            mu, sig = np.median(post1), np.std(post1)
-            dist_gp[i] = 'normal'
-            hyper_gp[i] = [mu, sig]#, hyper_gp[i][0], hyper_gp[i][1]]
+    if not noGP:
+        for i in range(len(par_gp)):
+            if dist_gp[i] != 'fixed':
+                post1 = res_gp_only.posteriors['posterior_samples'][par_gp[i]]
+                mu, sig = np.median(post1), np.std(post1)
+                dist_gp[i] = 'normal'
+                hyper_gp[i] = [mu, sig]#, hyper_gp[i][0], hyper_gp[i][1]]
     # Same goes for mflux and sigma_w
     for i in range(len(par_ins)):
         if dist_ins[i] != 'fixed':
@@ -737,9 +753,14 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
         dist_P.append(plan_params[k]['distribution'])
         hyper_P.append(plan_params[k]['hyperparameters'])
     # Total priors
-    params = params_P + par_ins + par_gp
-    dist = dist_P + dist_ins + dist_gp
-    hyper = hyper_P + hyper_ins + hyper_gp
+    if noGP:
+        params = params_P + par_ins
+        dist = dist_P + dist_ins
+        hyper = hyper_P + hyper_ins
+    else:
+        params = params_P + par_ins + par_gp
+        dist = dist_P + dist_ins + dist_gp
+        hyper = hyper_P + hyper_ins + hyper_gp
     # Prior dictionary
     priors = juliet.utils.generate_priors(params, dist, hyper)
 
@@ -756,7 +777,8 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
         # juliet best fit model
         model = results_full.lc.evaluate(instruments[i])
         # juliet best fit gp model
-        gp_model = results_full.lc.model[instruments[i]]['GP']
+        if not noGP:
+            gp_model = results_full.lc.model[instruments[i]]['GP']
         # juliet best fit transit model and its errors
         transit_model = results_full.lc.model[instruments[i]]['deterministic']
         transit_model_err = results_full.lc.model[instruments[i]]['deterministic_errors']
@@ -785,42 +807,43 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
         plt.savefig(pth1 + '/full_model_' + instruments[i] + '.png')
         plt.close(fig)
 
-        # Only transit model
-        fac = 1/np.max(transit_model)#1/(1+np.median(mflux))
-        # Errors in the model
-        umodel, lmodel = transit_model + transit_model_err, transit_model - transit_model_err
+        if not noGP:
+            # Only transit model
+            fac = 1/np.max(transit_model)#1/(1+np.median(mflux))
+            # Errors in the model
+            umodel, lmodel = transit_model + transit_model_err, transit_model - transit_model_err
 
-        # Making a plot
-        fig = plt.figure(figsize=(16,9))
-        gs = gd.GridSpec(2,1, height_ratios=[2,1])
+            # Making a plot
+            fig = plt.figure(figsize=(16,9))
+            gs = gd.GridSpec(2,1, height_ratios=[2,1])
 
-        t2 = np.linspace(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]), 10000)
-        model_res = results_full.lc.evaluate(instruments[i], t=t2, GPregressors=t2)
-        trans_model = results_full.lc.model[instruments[i]]['deterministic']
-        fac1 = 1/np.max(trans_model)
+            t2 = np.linspace(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]), 10000)
+            model_res = results_full.lc.evaluate(instruments[i], t=t2, GPregressors=t2)
+            trans_model = results_full.lc.model[instruments[i]]['deterministic']
+            fac1 = 1/np.max(trans_model)
 
-        # Top panel
-        ax1 = plt.subplot(gs[0])
-        ax1.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model)*fac, yerr=fle[instruments[i]]*fac, fmt='.', alpha=0.3)
-        #ax1.plot(tim[instruments[i]], transit_model*fac, c='k', zorder=100)
-        ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
-        #ax1.fill_between(tim[instruments[i]], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
-        ax1.set_ylabel('Relative Flux')
-        ax1.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
-        ax1.xaxis.set_major_formatter(plt.NullFormatter())
+            # Top panel
+            ax1 = plt.subplot(gs[0])
+            ax1.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model)*fac, yerr=fle[instruments[i]]*fac, fmt='.', alpha=0.3)
+            #ax1.plot(tim[instruments[i]], transit_model*fac, c='k', zorder=100)
+            ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
+            #ax1.fill_between(tim[instruments[i]], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
+            ax1.set_ylabel('Relative Flux')
+            ax1.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
+            ax1.xaxis.set_major_formatter(plt.NullFormatter())
 
-        # Bottom panel
-        ax2 = plt.subplot(gs[1])
-        ax2.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model-transit_model)*1e6*fac, yerr=fle[instruments[i]]*fac*1e6, fmt='.', alpha=0.3)
-        ax2.axhline(y=0.0, c='black', ls='--')
-        ax2.set_ylabel('Residuals (ppm)')
-        ax2.set_xlabel('Time (BJD)')
-        ax2.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
+            # Bottom panel
+            ax2 = plt.subplot(gs[1])
+            ax2.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model-transit_model)*1e6*fac, yerr=fle[instruments[i]]*fac*1e6, fmt='.', alpha=0.3)
+            ax2.axhline(y=0.0, c='black', ls='--')
+            ax2.set_ylabel('Residuals (ppm)')
+            ax2.set_xlabel('Time (BJD)')
+            ax2.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
 
-        if transit:
-            plt.savefig(pth1 + '/transit_model_' + instruments[i] + '.png')
-        elif eclipse:
-            plt.savefig(pth1 + '/eclipse_model_' + instruments[i] + '.png')
-        else:
-            plt.savefig(pth1 + '/transit_eclipse_model_' + instruments[i] + '.png')
-        plt.close(fig)
+            if transit:
+                plt.savefig(pth1 + '/transit_model_' + instruments[i] + '.png')
+            elif eclipse:
+                plt.savefig(pth1 + '/eclipse_model_' + instruments[i] + '.png')
+            else:
+                plt.savefig(pth1 + '/transit_eclipse_model_' + instruments[i] + '.png')
+            plt.close(fig)
