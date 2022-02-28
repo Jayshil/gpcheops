@@ -143,8 +143,7 @@ setup(
             'scipy',
             'astropy>=3.2.2',
             'juliet',
-            'matplotlib>3.2',
-            'pycheops>1.0.0'],  # Optional
+            'matplotlib>3.2'],  # Optional
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). Users will be able to install these using the "extras"
