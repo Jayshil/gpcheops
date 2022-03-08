@@ -178,7 +178,7 @@ def tdur(per, ar, rprs, bb):
     -----------
     per : float, or numpy.ndarray
         Orbital period of the planet
-    ar : float, or numpy.ndarray
+    aR : float, or numpy.ndarray
         Scaled semi-major axis, a/R*
     rprs : float, or numpy.ndarray
         Planet-to-star radius ratio, Rp/R*
@@ -196,3 +196,30 @@ def tdur(per, ar, rprs, bb):
     br1 = (1/ar)*(np.sqrt(cd/ef))
     tt = ab*np.arcsin(br1)
     return tt
+
+
+def tau(per, ar, rprs, bb):
+    """
+    To compute ingress/egress duration from
+    Period, a/R*, Rp/R* and b
+    ----------------------------------------
+    Parameters:
+    -----------
+    per : float, or numpy.ndarray
+        Orbital period of the planet
+    aR : float, or numpy.ndarray
+        Scaled semi-major axis, a/R*
+    rprs : float, or numpy.ndarray
+        Planet-to-star radius ratio, Rp/R*
+    bb : float, or numpy.ndarray
+        Impact parameter
+    -----------
+    return
+    -----------
+    float, or numpy.ndarray
+        Transit duration, in days
+    """
+    ab = per/np.pi
+    bc = 1/np.sqrt(1 - bb**2)
+    xy = ab*bc*rprs/ar
+    return xy
