@@ -531,7 +531,7 @@ def multiple_params_decorr(tim, fl, fle, params, plan_params, t14, GP='ExM', sam
     print('   FINAL_ANALYSIS_' + instrument + ' folder in out_path.')
 
 
-def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, out_path=os.getcwd(), GP='ExM', jointGP=False, noGP=True, sampler='dynesty', verbose=True, nthreads=None):
+def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, out_path=os.getcwd(), GP='ExM', jointGP=False, sampler='dynesty', verbose=True, nthreads=None):
     """
     This function will analyse multiple visits analysed
     by multiple_params_decorr function
@@ -563,10 +563,6 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
     jointGP : bool
         boolean on whether to provide a joint GP priors on each intruments
         default is False
-    noGP : bool
-        boolean on whether to use GP in multiple analysis or not
-        default is True
-        Note that to use noGP, one has to make jointGP False.
     sampler : str
         sampler to be used in posterior estimation
         a valid choices are 'multinest', 'dynesty', 'dynamic_dynesty', or 'ultranest'
@@ -598,7 +594,6 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
         tim[instrument], fl[instrument], fle[instrument] = tim_lc, fl_lc, fle_lc
         # Saving priors
         pc1 = glob(input_folders[i] + '/*.pkl')[0]
-        print(pc1)
         post1 = pickle.load(open(pc1, 'rb'), encoding='latin1')
         pp1 = post1['posterior_samples']
         # GP priors
@@ -611,7 +606,7 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
                 hyper_gp.append([mu, sig])
         """
         # GP parameters
-        if not jointGP and not noGP:
+        if not jointGP:
             if GP == 'ExM':
                 par_gp = par_gp + ['GP_sigma_' + instrument, 'GP_timescale_' + instrument, 'GP_rho_' + instrument]
                 dist_gp = dist_gp + ['loguniform', 'loguniform', 'loguniform']
@@ -624,24 +619,26 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
                 par_gp = par_gp + ['GP_S0_' + instrument, 'GP_omega0_' + instrument, 'GP_Q_' + instrument]
                 dist_gp = dist_gp + ['uniform', 'uniform', 'fixed']
                 hyper_gp = hyper_gp + [[np.exp(-40.), np.exp(0.)], [np.exp(-10.), np.exp(10.)], np.exp(1/np.sqrt(2))]
-            else:
-                raise Exception('GP method can only be ExM, QP or SHO.')
         # instrumental priors
         # mdilution
         par_ins.append('mdilution_' + instrument)
         dist_ins.append('fixed')
         hyper_ins.append(1.0)
-        # mflux
+        # mflux and sigma_w
         par_ins.append('mflux_' + instrument)
         dist_ins.append('normal')
-        hyper_ins.append([0.,0.1])
-        # mflux and sigma_w
+        hyper_ins.append([0., 0.1])
+        par_ins.append('sigma_w_' + instrument)
+        dist_ins.append('loguniform')
+        hyper_ins.append([0.1, 10000.])
+        """
         for j in pp1.keys():
-            if j[0:7] == 'sigma_w':
+            if j[0:5] == 'mflux' or j[0:7] == 'sigma_w':
                 par_ins.append(j)
                 dist_ins.append('normal')
                 mu, sig = np.median(pp1[j]), np.std(pp1[j])
                 hyper_ins.append([mu, sig])
+        """
         t01 = np.median(pp1['t0_p1'])
         try:
             p01 = np.median(pp1['P_p1'])
@@ -681,7 +678,7 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
         tim_oot[instrument], fl_oot[instrument], fle_oot[instrument] = tim_lc2, fl_lc2, fle_lc2
     # So, now, we have data from multiple instruments and corresponding priors
     # If joint GP priors has to be provided
-    if jointGP and not noGP:
+    if jointGP:
         if GP == 'ExM':
             par1, par2, par3 = 'GP_sigma', 'GP_timescale', 'GP_rho'
             for k in instruments:
@@ -711,23 +708,15 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
         os.mkdir(pth1)
     # We first fit the out of transit data
     # Total priors
-    if noGP:
-        params_gp_only = par_ins
-        dist_gp_only = dist_ins
-        hyper_gp_only = hyper_ins
-    else:
-        params_gp_only = par_ins + par_gp
-        dist_gp_only = dist_ins + dist_gp
-        hyper_gp_only = hyper_ins + hyper_gp
+    params_gp_only = par_ins + par_gp
+    dist_gp_only = dist_ins + dist_gp
+    hyper_gp_only = hyper_ins + hyper_gp
     # Populating prior dict
     priors = juliet.utils.generate_priors(params_gp_only, dist_gp_only, hyper_gp_only)
 
     ## Running GP only fit
-    if not noGP:
-        data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=tim_oot,\
-            out_folder=pth1 + '/oot')
-    else:
-        data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, out_folder=pth1 + '/oot')
+    data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=tim_oot,\
+         out_folder=pth1 + '/oot')
     if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
         res_gp_only = data.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads)
     else:
@@ -736,13 +725,12 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
     ## Full data fit
     ## Defining priors
     # We would take instrumental priors from our previous fit
-    if not noGP:
-        for i in range(len(par_gp)):
-            if dist_gp[i] != 'fixed':
-                post1 = res_gp_only.posteriors['posterior_samples'][par_gp[i]]
-                mu, sig = np.median(post1), np.std(post1)
-                dist_gp[i] = 'normal'
-                hyper_gp[i] = [mu, sig]#, hyper_gp[i][0], hyper_gp[i][1]]
+    for i in range(len(par_gp)):
+        if dist_gp[i] != 'fixed':
+            post1 = res_gp_only.posteriors['posterior_samples'][par_gp[i]]
+            mu, sig = np.median(post1), np.std(post1)
+            dist_gp[i] = 'truncatednormal'
+            hyper_gp[i] = [mu, sig, hyper_gp[i][0], hyper_gp[i][1]]
     # Same goes for mflux and sigma_w
     for i in range(len(par_ins)):
         if dist_ins[i] != 'fixed':
@@ -756,22 +744,15 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
         dist_P.append(plan_params[k]['distribution'])
         hyper_P.append(plan_params[k]['hyperparameters'])
     # Total priors
-    if noGP:
-        params = params_P + par_ins
-        dist = dist_P + dist_ins
-        hyper = hyper_P + hyper_ins
-    else:
-        params = params_P + par_ins + par_gp
-        dist = dist_P + dist_ins + dist_gp
-        hyper = hyper_P + hyper_ins + hyper_gp
+    params = params_P + par_ins + par_gp
+    dist = dist_P + dist_ins + dist_gp
+    hyper = hyper_P + hyper_ins + hyper_gp
     # Prior dictionary
     priors = juliet.utils.generate_priors(params, dist, hyper)
 
     # Running the whole fit
-    if not noGP:
-        data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=tim, out_folder=pth1)
-    else:
-        data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, out_folder=pth1)
+    data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=tim,\
+         out_folder=pth1)
     if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
         results_full = data_full.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads)
     else:
@@ -782,8 +763,7 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
         # juliet best fit model
         model = results_full.lc.evaluate(instruments[i])
         # juliet best fit gp model
-        if not noGP:
-            gp_model = results_full.lc.model[instruments[i]]['GP']
+        gp_model = results_full.lc.model[instruments[i]]['GP']
         # juliet best fit transit model and its errors
         transit_model = results_full.lc.model[instruments[i]]['deterministic']
         transit_model_err = results_full.lc.model[instruments[i]]['deterministic_errors']
@@ -812,43 +792,343 @@ def multiple_visits(input_folders, instruments, plan_params, t14, oot_method, ou
         plt.savefig(pth1 + '/full_model_' + instruments[i] + '.png')
         plt.close(fig)
 
-        if not noGP:
-            # Only transit model
-            fac = 1/np.max(transit_model)#1/(1+np.median(mflux))
-            # Errors in the model
-            umodel, lmodel = transit_model + transit_model_err, transit_model - transit_model_err
+        # Only transit model
+        fac = 1/np.max(transit_model)#1/(1+np.median(mflux))
+        # Errors in the model
+        umodel, lmodel = transit_model + transit_model_err, transit_model - transit_model_err
 
-            # Making a plot
-            fig = plt.figure(figsize=(16,9))
-            gs = gd.GridSpec(2,1, height_ratios=[2,1])
+        # Making a plot
+        fig = plt.figure(figsize=(16,9))
+        gs = gd.GridSpec(2,1, height_ratios=[2,1])
 
-            t2 = np.linspace(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]), 10000)
-            model_res = results_full.lc.evaluate(instruments[i], t=t2, GPregressors=t2)
-            trans_model = results_full.lc.model[instruments[i]]['deterministic']
-            fac1 = 1/np.max(trans_model)
+        t2 = np.linspace(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]), 10000)
+        model_res = results_full.lc.evaluate(instruments[i], t=t2, GPregressors=t2)
+        trans_model = results_full.lc.model[instruments[i]]['deterministic']
+        fac1 = 1/np.max(trans_model)
 
-            # Top panel
-            ax1 = plt.subplot(gs[0])
-            ax1.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model)*fac, yerr=fle[instruments[i]]*fac, fmt='.', alpha=0.3)
-            #ax1.plot(tim[instruments[i]], transit_model*fac, c='k', zorder=100)
-            ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
-            #ax1.fill_between(tim[instruments[i]], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
-            ax1.set_ylabel('Relative Flux')
-            ax1.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
-            ax1.xaxis.set_major_formatter(plt.NullFormatter())
+        # Top panel
+        ax1 = plt.subplot(gs[0])
+        ax1.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model)*fac, yerr=fle[instruments[i]]*fac, fmt='.', alpha=0.3)
+        #ax1.plot(tim[instruments[i]], transit_model*fac, c='k', zorder=100)
+        ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
+        #ax1.fill_between(tim[instruments[i]], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
+        ax1.set_ylabel('Relative Flux')
+        ax1.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
+        ax1.xaxis.set_major_formatter(plt.NullFormatter())
 
-            # Bottom panel
-            ax2 = plt.subplot(gs[1])
-            ax2.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model-transit_model)*1e6*fac, yerr=fle[instruments[i]]*fac*1e6, fmt='.', alpha=0.3)
-            ax2.axhline(y=0.0, c='black', ls='--')
-            ax2.set_ylabel('Residuals (ppm)')
-            ax2.set_xlabel('Time (BJD)')
-            ax2.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
+        # Bottom panel
+        ax2 = plt.subplot(gs[1])
+        ax2.errorbar(tim[instruments[i]], (fl[instruments[i]]-gp_model-transit_model)*1e6*fac, yerr=fle[instruments[i]]*fac*1e6, fmt='.', alpha=0.3)
+        ax2.axhline(y=0.0, c='black', ls='--')
+        ax2.set_ylabel('Residuals (ppm)')
+        ax2.set_xlabel('Time (BJD)')
+        ax2.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
 
-            if transit:
-                plt.savefig(pth1 + '/transit_model_' + instruments[i] + '.png')
-            elif eclipse:
-                plt.savefig(pth1 + '/eclipse_model_' + instruments[i] + '.png')
-            else:
-                plt.savefig(pth1 + '/transit_eclipse_model_' + instruments[i] + '.png')
-            plt.close(fig)
+        if transit:
+            plt.savefig(pth1 + '/transit_model_' + instruments[i] + '.png')
+        elif eclipse:
+            plt.savefig(pth1 + '/eclipse_model_' + instruments[i] + '.png')
+        else:
+            plt.savefig(pth1 + '/transit_eclipse_model_' + instruments[i] + '.png')
+        plt.close(fig)
+
+
+def multiple_visits_wo_GP(input_folders, instruments, plan_params, t14, oot_method, out_path=os.getcwd(), sampler='dynesty', verbose=True, nthreads=None):
+    """
+    This function will analyse multiple visits analysed
+    by multiple_params_decorr function
+    ---------------------------------------------------
+    Parameters:
+    -----------
+    input_folders : list
+        list containing folders analysed by multiple_params_decorr
+    instruments : list
+        list of the instruments
+        The name of the instruments should be in the same order as that of the `input_folders`
+    plan_params : dict
+        juliet readable planetary priors
+    t14 : float
+        transit duration in days
+    oot_method : list
+        Which method to be use for selecting out-of-transit/eclipse (or joint) points for each folder
+        one option is single-- this method takes transit duration and and discard points
+                            out of this time. Best to use for single transit/eclipse.
+        another option is multi -- which uses phase-space to discard out-of-transit/eclipse
+                                   points. Can be used with single/multiple transit/eclipse events.
+    out_path : str
+        path to the output folder
+        default is the present working directory
+    sampler : str
+        sampler to be used in posterior estimation
+        a valid choices are 'multinest', 'dynesty', 'dynamic_dynesty', or 'ultranest'
+        default is 'dynesty'
+    verbose : bool
+        boolean on whether to print progress of analysis
+        default is true
+    """
+    # Creating a dictionary to save data products
+    tim, fl, fle = {}, {}, {}
+    tim_oot, fl_oot, fle_oot = {}, {}, {}
+    # instrumental priors
+    par_ins, dist_ins, hyper_ins = [], [], []
+    # Saving the instruments
+    if len(input_folders) != len(oot_method):
+        raise Exception('Not enough `oot-method` were provided for total input folders, or\n\t\t Not enough folders for `oot-method`.')
+    if len(input_folders) != len(instruments):
+        raise Exception('Not enough instruments were provided for total input folders, or\n\t\t Not enough folders for instruments.')
+    if len(oot_method) != len(instruments):
+        raise Exception('Not enough `oot-method` was provided for total instruments, or\n\t\t Not enough instruments for `oot-method`.')
+    for i in range(len(input_folders)):
+        instrument = instruments[i]
+        #instruments.append(instrument)
+        # Saving decorrelated data
+        data_lc = glob(input_folders[i] + '/*_decorrelated_photometry.dat')[0]
+        tim_lc, fl_lc, fle_lc = np.loadtxt(data_lc, usecols=(0,1,2), unpack=True)
+        tim[instrument], fl[instrument], fle[instrument] = tim_lc, fl_lc, fle_lc
+        # Saving priors
+        pc1 = glob(input_folders[i] + '/*.pkl')[0]
+        post1 = pickle.load(open(pc1, 'rb'), encoding='latin1')
+        pp1 = post1['posterior_samples']
+        # instrumental priors
+        # mdilution
+        par_ins.append('mdilution_' + instrument)
+        dist_ins.append('fixed')
+        hyper_ins.append(1.0)
+        par_ins.append('mflux_' + instrument)
+        dist_ins.append('normal')
+        hyper_ins.append([0., 0.1])
+        par_ins.append('sigma_w_' + instrument)
+        dist_ins.append('loguniform')
+        hyper_ins.append([0.1, 10000.])
+        t01 = np.median(pp1['t0_p1'])
+        try:
+            p01 = np.median(pp1['P_p1'])
+        except:
+            p01 = plan_params['P_p1']['hyperparameters']
+        eclipse = False
+        transit = False
+        for k in pp1.keys():
+            if k[0:2] == 'fp':
+                eclipse = True
+            if k[0:2] == 'q1':
+                transit = True
+        if oot_method[i] == 'single':
+            if transit and not eclipse:
+                mask = np.where(tim_lc > (t01 + (t14/2)))[0]
+                mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
+            if eclipse and not transit:
+                mask = np.where(tim_lc > (t01 + (p01/2) + (t14/2)))[0]
+                mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) - (t14/2)))[0], mask))
+            if eclipse and transit:
+                mask = np.where(tim_lc > (t01 + (t14/2)))[0]
+                mask = np.hstack((np.where(tim_lc < (t01 - (t14/2)))[0], mask))
+                mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) + (t14/2)))[0], mask))
+                mask = np.hstack((np.where(tim_lc < (t01 + (p01/2) - (t14/2)))[0], mask))
+        elif oot_method[i] == 'multi':
+            phs_t = juliet.utils.get_phases(tim_lc, p01, t01)
+            phs_e = juliet.utils.get_phases(tim_lc, p01, (t01+(p01/2)))
+            if eclipse and not transit:
+                mask = np.where(np.abs(phs_e*p01) >= t14)[0]
+            elif transit and not eclipse:
+                mask = np.where(np.abs(phs_t*p01) >= t14)[0]
+            elif transit and eclipse:
+                mask = np.where((np.abs(phs_e*p01) >= t14)&(np.abs(phs_t*p01) >= t14))[0]
+        else:
+            raise Exception('Method to discard out-of-transit/eclipse points can only be "single" or "multi".')
+        tim_lc2, fl_lc2, fle_lc2 = tim_lc[mask], fl_lc[mask], fle_lc[mask]
+        tim_oot[instrument], fl_oot[instrument], fle_oot[instrument] = tim_lc2, fl_lc2, fle_lc2
+    # So, now, we have data from multiple instruments and corresponding priors
+    ### Folder to save results
+    pth1 = Path(out_path + '/FINAL_ANALYSIS_MULT_INSTRUMENT')
+    if not pth1.exists():
+        os.mkdir(pth1)
+    # We first fit the out of transit data
+    # Populating prior dict
+    priors = juliet.utils.generate_priors(par_ins, dist_ins, hyper_ins)
+
+    ## Running GP only fit
+    data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, out_folder=pth1 + '/oot')
+    if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
+        res_oot = data.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads)
+    else:
+        res_oot = data.fit(sampler = sampler, n_live_points=500, verbose = verbose)
+
+    ## Full data fit
+    ## Defining priors
+    # We would take instrumental priors from our previous fit
+    # Same goes for mflux and sigma_w
+    for i in range(len(par_ins)):
+        if dist_ins[i] != 'fixed':
+            post1 = res_oot.posteriors['posterior_samples'][par_ins[i]]
+            mu, sig = np.median(post1), np.std(post1)
+            dist_ins[i] = 'normal'
+            hyper_ins[i] = [mu, sig]#, hyper_ins[i][0], hyper_ins[i][1]]
+    # Planetary parameters
+    params_P, dist_P, hyper_P = list(plan_params.keys()), [], []
+    for k in plan_params.keys():
+        dist_P.append(plan_params[k]['distribution'])
+        hyper_P.append(plan_params[k]['hyperparameters'])
+    # Total priors
+    params = params_P + par_ins
+    dist = dist_P + dist_ins
+    hyper = hyper_P + hyper_ins
+    # Prior dictionary
+    priors = juliet.utils.generate_priors(params, dist, hyper)
+
+    # Running the whole fit
+    data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, out_folder=pth1)
+    if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
+        results_full = data_full.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads)
+    else:
+        results_full = data_full.fit(sampler = sampler, n_live_points=500, verbose=True)
+
+    for i in range(len(instruments)):
+        ### Evaluating the fitted model
+        # juliet best fit model
+        model = results_full.lc.evaluate(instruments[i])
+
+        # Plotting the results
+        # Full model
+        fig = plt.figure(figsize=(16,9))
+        gs = gd.GridSpec(2,1, height_ratios=[2,1])
+
+        # Top panel
+        ax1 = plt.subplot(gs[0])
+        ax1.errorbar(tim[instruments[i]], fl[instruments[i]], yerr=fle[instruments[i]], fmt='.', alpha=0.3)
+        ax1.plot(tim[instruments[i]], model, c='k', zorder=100)
+        ax1.set_ylabel('Relative Flux')
+        ax1.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
+        ax1.xaxis.set_major_formatter(plt.NullFormatter())
+
+        # Bottom panel
+        ax2 = plt.subplot(gs[1])
+        ax2.errorbar(tim[instruments[i]], (fl[instruments[i]]-model)*1e6, yerr=fle[instruments[i]]*1e6, fmt='.', alpha=0.3)
+        ax2.axhline(y=0.0, c='black', ls='--')
+        ax2.set_ylabel('Residuals (ppm)')
+        ax2.set_xlabel('Time (BJD)')
+        ax2.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
+
+        if transit:
+            plt.savefig(pth1 + '/transit_model_' + instruments[i] + '.png')
+        elif eclipse:
+            plt.savefig(pth1 + '/eclipse_model_' + instruments[i] + '.png')
+        else:
+            plt.savefig(pth1 + '/transit_eclipse_model_' + instruments[i] + '.png')
+        plt.close(fig)
+
+def multiple_visits_minimal(input_folders, instruments, plan_params, out_path=os.getcwd(), sampler='dynesty', verbose=True, nthreads=None):
+    """
+    This function will analyse multiple visits analysed
+    by multiple_params_decorr function
+    ---------------------------------------------------
+    Parameters:
+    -----------
+    input_folders : list
+        list containing folders analysed by multiple_params_decorr
+    instruments : list
+        list of the instruments
+        The name of the instruments should be in the same order as that of the `input_folders`
+    plan_params : dict
+        juliet readable planetary priors
+    out_path : str
+        path to the output folder
+        default is the present working directory
+    sampler : str
+        sampler to be used in posterior estimation
+        a valid choices are 'multinest', 'dynesty', 'dynamic_dynesty', or 'ultranest'
+        default is 'dynesty'
+    verbose : bool
+        boolean on whether to print progress of analysis
+        default is true
+    """
+    # Creating a dictionary to save data products
+    tim, fl, fle = {}, {}, {}
+    # instrumental priors
+    par_ins, dist_ins, hyper_ins = [], [], []
+    # Saving the instruments
+    for i in range(len(input_folders)):
+        instrument = instruments[i]
+        #instruments.append(instrument)
+        # Saving decorrelated data
+        data_lc = glob(input_folders[i] + '/*_decorrelated_photometry.dat')[0]
+        tim_lc, fl_lc, fle_lc = np.loadtxt(data_lc, usecols=(0,1,2), unpack=True)
+        tim[instrument], fl[instrument], fle[instrument] = tim_lc, fl_lc, fle_lc
+        # Saving priors
+        pc1 = glob(input_folders[i] + '/*.pkl')[0]
+        post1 = pickle.load(open(pc1, 'rb'), encoding='latin1')
+        pp1 = post1['posterior_samples']
+        # instrumental priors
+        # mdilution
+        par_ins.append('mdilution_' + instrument)
+        dist_ins.append('fixed')
+        hyper_ins.append(1.0)
+        par_ins.append('mflux_' + instrument)
+        dist_ins.append('normal')
+        hyper_ins.append([0., 0.1])
+        par_ins.append('sigma_w_' + instrument)
+        dist_ins.append('loguniform')
+        hyper_ins.append([0.1, 10000.])
+        eclipse = False
+        transit = False
+        for k in pp1.keys():
+            if k[0:2] == 'fp':
+                eclipse = True
+            if k[0:2] == 'q1':
+                transit = True
+    # So, now, we have data from multiple instruments and corresponding priors
+    ### Folder to save results
+    pth1 = Path(out_path + '/FINAL_ANALYSIS_MULT_INSTRUMENT')
+    if not pth1.exists():
+        os.mkdir(pth1)
+    # Planetary parameters
+    params_P, dist_P, hyper_P = list(plan_params.keys()), [], []
+    for k in plan_params.keys():
+        dist_P.append(plan_params[k]['distribution'])
+        hyper_P.append(plan_params[k]['hyperparameters'])
+    # Total priors
+    params = params_P + par_ins
+    dist = dist_P + dist_ins
+    hyper = hyper_P + hyper_ins
+    # Prior dictionary
+    priors = juliet.utils.generate_priors(params, dist, hyper)
+
+    # Running the whole fit
+    data = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, out_folder=pth1)
+    if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
+        results_full = data.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads)
+    else:
+        results_full = data.fit(sampler = sampler, n_live_points=500, verbose=True)
+
+    for i in range(len(instruments)):
+        ### Evaluating the fitted model
+        # juliet best fit model
+        model = results_full.lc.evaluate(instruments[i])
+
+        # Plotting the results
+        # Full model
+        fig = plt.figure(figsize=(16,9))
+        gs = gd.GridSpec(2,1, height_ratios=[2,1])
+
+        # Top panel
+        ax1 = plt.subplot(gs[0])
+        ax1.errorbar(tim[instruments[i]], fl[instruments[i]], yerr=fle[instruments[i]], fmt='.', alpha=0.3)
+        ax1.plot(tim[instruments[i]], model, c='k', zorder=100)
+        ax1.set_ylabel('Relative Flux')
+        ax1.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
+        ax1.xaxis.set_major_formatter(plt.NullFormatter())
+
+        # Bottom panel
+        ax2 = plt.subplot(gs[1])
+        ax2.errorbar(tim[instruments[i]], (fl[instruments[i]]-model)*1e6, yerr=fle[instruments[i]]*1e6, fmt='.', alpha=0.3)
+        ax2.axhline(y=0.0, c='black', ls='--')
+        ax2.set_ylabel('Residuals (ppm)')
+        ax2.set_xlabel('Time (BJD)')
+        ax2.set_xlim(np.min(tim[instruments[i]]), np.max(tim[instruments[i]]))
+
+        if transit:
+            plt.savefig(pth1 + '/transit_model_' + instruments[i] + '.png')
+        elif eclipse:
+            plt.savefig(pth1 + '/eclipse_model_' + instruments[i] + '.png')
+        else:
+            plt.savefig(pth1 + '/transit_eclipse_model_' + instruments[i] + '.png')
+        plt.close(fig)
