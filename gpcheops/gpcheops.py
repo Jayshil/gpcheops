@@ -12,14 +12,6 @@ import corner
 from matplotlib.gridspec import GridSpec
 
 
-def regress(x):
-    """
-    To normalise x
-    (For usage in normalise decorrelation parameter)
-    """
-    return (x - np.mean(x))/np.sqrt(np.var(x))
-
-
 def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=os.getcwd(), sampler='dynesty', save=True, oot_method='single', verbose=True):
     """
     This function do the transit light curve analysis with
@@ -135,7 +127,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     # Out-of-transit data
     tim_oot, fl_oot, fle_oot, param_oot = {}, {}, {}, {}
     tim_oot[instrument], fl_oot[instrument], fle_oot[instrument] = tim[mask], fl[mask], fle[mask]
-    param_oot[instrument] = regress(param[mask])
+    param_oot[instrument] = param[mask]
     
     # Sorting the data according to the decorrelating parameter
     tt = Table()
