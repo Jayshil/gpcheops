@@ -26,7 +26,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         decorrelation parameter
     plan_params : dict
         juliet readable priors
-        juliet will identify which model (batman or catwoman)
+        juliet will identify which model (batman or catwoman or eclipse or joint)
         is to be used
     t14 : float
         transit duration
@@ -89,7 +89,6 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     tim, fl, fle = tim[instrument], fl[instrument], fle[instrument]
     nm_param = list(param.keys())[0]
     param = param[nm_param]
-    
     
     ### Let's first do the out-of-the-transit analysis.
     # Masking in-transit points
