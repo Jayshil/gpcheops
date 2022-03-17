@@ -147,7 +147,7 @@ def linear_decorrelation(tim, fl, fle, params, plan_param_priors, t14, lin_prior
         for i in range(ln_par.shape[1]):
             par_lin = par_lin + ['theta' + str(i) + '_' + instrument]
             dist_lin = dist_lin + ['uniform']
-            hyper_lin = hyper_lin + [-5.0, 5.0]
+            hyper_lin = hyper_lin + [[-5.0, 5.0]]
     else:
         par_lin = lin_priors['params']
         dist_lin = lin_priors['dists']
@@ -191,7 +191,7 @@ def linear_decorrelation(tim, fl, fle, params, plan_param_priors, t14, lin_prior
     priors_full = juliet.utils.generate_priors(params_P+par_ins+par_lin, dist_P+dist_ins+dist_lin, hyper_P+hyper_ins+hyper_lin)
 
     # Now modelling the out-of-transit data
-    data_full = juliet.load(priros=priors_full, t_lc=tim_full, y_lc=fl_full, yerr_lc=fle_full, linear_regressors_lc=param_full,\
+    data_full = juliet.load(priors=priors_full, t_lc=tim_full, y_lc=fl_full, yerr_lc=fle_full, linear_regressors_lc=param_full,\
         out_folder=out_path + '/juliet_'+ instrument +'/juliet_full')
     if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
         res_full = data_full.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads, verbose=True)
@@ -254,3 +254,10 @@ def linear_decorrelation(tim, fl, fle, params, plan_param_priors, t14, lin_prior
         else:
             plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full/transit_eclipse_model.png')
         plt.close(fig)
+
+        # Saving the decorrelated photometry:
+        tim1, fl1, fle1 = tim_full[instrument], fl_full[instrument]-comps['lm']-oot_flux+1, fle_full[instrument]
+        f1 = open(out_path + '/juliet_'+ instrument +'/juliet_full/LINEAR_decorrelated_photometry.dat', 'w')
+        for i in range(len(tim1)):
+            f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
+        f1.close()
