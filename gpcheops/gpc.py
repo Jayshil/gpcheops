@@ -26,7 +26,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         decorrelation parameter
     plan_params : dict
         juliet readable priors
-        juliet will identify which model (batman or catwoman)
+        juliet will identify which model (batman or catwoman or eclipse or joint)
         is to be used
     t14 : float
         transit duration
@@ -89,7 +89,6 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     tim, fl, fle = tim[instrument], fl[instrument], fle[instrument]
     nm_param = list(param.keys())[0]
     param = param[nm_param]
-    
     
     ### Let's first do the out-of-the-transit analysis.
     # Masking in-transit points
@@ -195,19 +194,19 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         if dist_gp[i] != 'fixed':
             post1 = res_gp_only.posteriors['posterior_samples'][params_gp[i]]
             mu, sig = np.median(post1), np.std(post1)
-            dist_gp[i] = 'normal'
-            hyper_gp[i] = [mu, 2*sig]#, hyper_gp[i][0], hyper_gp[i][1]]
+            dist_gp[i] = 'truncatednormal'
+            hyper_gp[i] = [mu, sig, hyper_gp[i][0], hyper_gp[i][1]]
     # Same goes for mflux and sigma_w
     # For sigma_w_CHEOPS
-    dist_ins[2] = 'normal'
+    dist_ins[2] = 'truncatednormal'
     post2 = res_gp_only.posteriors['posterior_samples']['sigma_w_' + instrument]
     mu, sig = np.median(post2), np.std(post2)
-    hyper_ins[2] = [mu, 2*sig]#, hyper_ins[2][0], hyper_ins[2][1]]
+    hyper_ins[2] = [mu, sig, hyper_ins[2][0], hyper_ins[2][1]]
     # For mflux
     dist_ins[1] = 'normal'
     post2 = res_gp_only.posteriors['posterior_samples']['mflux_' + instrument]
     mu, sig = np.median(post2), np.std(post2)
-    hyper_ins[1] = [mu, 2*sig]
+    hyper_ins[1] = [mu, sig]
     # Planetary parameters
     params_P, dist_P, hyper_P = list(plan_params.keys()), [], []
     for k in plan_params.keys():
