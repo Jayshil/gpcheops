@@ -1,3 +1,4 @@
+from turtle import color
 import numpy as np
 import matplotlib.pyplot as plt
 import juliet
@@ -226,9 +227,11 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
 
     ### Evaluating the fitted model
     # juliet best fit model
-    model = results_full.lc.evaluate(instrument)
+    model, model_uerr, model_derr, comps = results_full.lc.evaluate(instrument, return_err=True, return_components=True, all_samples=True)
     # juliet best fit gp model
     gp_model = results_full.lc.model[instrument]['GP']
+    gp_model_uerr = results_full.model[instrument]['GP_uerror']
+    gp_model_derr = results_full.model[instrument]['GP_lerror']
     # juliet best fit transit model and its errors
     transit_model = results_full.lc.model[instrument]['deterministic']
     transit_model_err = results_full.lc.model[instrument]['deterministic_errors']
@@ -242,6 +245,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         ax1 = plt.subplot(gs[0])
         ax1.errorbar(param[instrument], (fl[instrument]-transit_model), yerr=fle[instrument], fmt='.', alpha=0.3)
         ax1.plot(param[instrument], gp_model, c='k', zorder=100)
+        ax1.fill_between(param[instrument], gp_model_derr, gp_model_uerr, color='k', alpha=0.3, zorder=100)
         ax1.set_ylabel('Trend with ' + nm_param)
         ax1.set_xlim(np.min(param[instrument]), np.max(param[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
@@ -265,6 +269,8 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     tt3['fle'] = fle[instrument]
     tt3['model'] = model
     tt3['gp_mod'] = gp_model
+    tt3['gp_mod_ue'] = gp_model_uerr
+    tt3['gp_mod_de'] = gp_model_derr
     tt3['tran_mod'] = transit_model
     tt3['tran_mod_err'] = transit_model_err
 
@@ -275,6 +281,8 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     fle[instrument] = tt3['fle']
     model = tt3['model']
     gp_model = tt3['gp_mod']
+    gp_model_uerr = tt3['gp_mod_ue']
+    gp_model_derr = tt3['gp_mod_de']
     transit_model = tt3['tran_mod']
     transit_model_err = tt3['tran_mod_err']
 
@@ -360,10 +368,12 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
 
     ## Decorrelating!!
     if save:
-        tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument]*fac
+        tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument]
+        gp_err = (gp_model_uerr-gp_model_derr)/2
+        fle2 = (np.sqrt((fle1**2) + (gp_err**2)))*fac
         f1 = open(out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param + '/' + nm_param + '_decorrelated_photometry.dat','w')
         for i in range(len(tim[instrument])):
-            f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
+            f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle2[i]) + '\n')
         f1.close()
 
     return results_full.posteriors['lnZ']
