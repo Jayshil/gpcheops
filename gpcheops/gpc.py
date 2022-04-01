@@ -230,8 +230,8 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     model, model_uerr, model_derr, comps = results_full.lc.evaluate(instrument, return_err=True, return_components=True, all_samples=True)
     # juliet best fit gp model
     gp_model = results_full.lc.model[instrument]['GP']
-    gp_model_uerr = results_full.model[instrument]['GP_uerror']
-    gp_model_derr = results_full.model[instrument]['GP_lerror']
+    gp_model_uerr = results_full.lc.model[instrument]['GP_uerror']
+    gp_model_derr = results_full.lc.model[instrument]['GP_lerror']
     # juliet best fit transit model and its errors
     transit_model = results_full.lc.model[instrument]['deterministic']
     transit_model_err = results_full.lc.model[instrument]['deterministic_errors']
