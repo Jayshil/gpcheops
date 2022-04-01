@@ -245,7 +245,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         ax1 = plt.subplot(gs[0])
         ax1.errorbar(param[instrument], (fl[instrument]-transit_model), yerr=fle[instrument], fmt='.', alpha=0.3)
         ax1.plot(param[instrument], gp_model, c='k', zorder=100)
-        #ax1.fill_between(param[instrument], gp_model_derr-transit_model, gp_model_uerr-transit_model, color='k', alpha=0.3, zorder=100)
+        ax1.fill_between(param[instrument], model_derr-trans_model, model_uerr-transit_model, color='k', alpha=0.3, zorder=100)
         ax1.set_ylabel('Trend with ' + nm_param)
         ax1.set_xlim(np.min(param[instrument]), np.max(param[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
@@ -268,6 +268,8 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     tt3['fl'] = fl[instrument]
     tt3['fle'] = fle[instrument]
     tt3['model'] = model
+    tt3['model_ue'] = model_uerr
+    tt3['model_de'] = model_derr
     tt3['gp_mod'] = gp_model
     tt3['gp_mod_ue'] = gp_model_uerr
     tt3['gp_mod_de'] = gp_model_derr
@@ -280,6 +282,8 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     fl[instrument] = tt3['fl']
     fle[instrument] = tt3['fle']
     model = tt3['model']
+    model_uerr = tt3['model_ue']
+    model_derr = tt3['model_de']
     gp_model = tt3['gp_mod']
     gp_model_uerr = tt3['gp_mod_ue']
     gp_model_derr = tt3['gp_mod_de']
@@ -296,6 +300,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         ax1 = plt.subplot(gs[0])
         ax1.errorbar(tim[instrument], fl[instrument], yerr=fle[instrument], fmt='.', alpha=0.3)
         ax1.plot(tim[instrument], model, c='k', zorder=100)
+        ax1.fill_between(tim[instrument], model_derr, model_uerr, color='k', alpha=0.3, zorder=100)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
@@ -345,7 +350,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         ax1.errorbar(tim[instrument], (fl[instrument]-gp_model)*fac, yerr=fle[instrument]*fac, fmt='.', alpha=0.3)
         #ax1.plot(tim[instrument], transit_model*fac, c='k', zorder=100)
         ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
-        #ax1.fill_between(tim[instrument], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
+        ax1.fill_between(tim[instrument], (model_derr-gp_model)*fac, (model_derr-gp_model)*fac, color='k', alpha=0.3, zorder=100)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
@@ -369,8 +374,8 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
     ## Decorrelating!!
     if save:
         tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument]
-        gp_err = (gp_model_uerr-gp_model_derr)/2
-        fle2 = (np.sqrt((fle1**2) + (gp_err**2)))*fac
+        err7 = (model_uerr-model_derr)/2
+        fle2 = (np.sqrt((fle1**2) + (err7**2)))*fac
         f1 = open(out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param + '/' + nm_param + '_decorrelated_photometry.dat','w')
         for i in range(len(tim[instrument])):
             f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle2[i]) + '\n')
