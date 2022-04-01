@@ -245,7 +245,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         ax1 = plt.subplot(gs[0])
         ax1.errorbar(param[instrument], (fl[instrument]-transit_model), yerr=fle[instrument], fmt='.', alpha=0.3)
         ax1.plot(param[instrument], gp_model, c='k', zorder=100)
-        ax1.fill_between(param[instrument], gp_model_derr-transit_model, gp_model_uerr-transit_model, color='k', alpha=0.3, zorder=100)
+        #ax1.fill_between(param[instrument], gp_model_derr-transit_model, gp_model_uerr-transit_model, color='k', alpha=0.3, zorder=100)
         ax1.set_ylabel('Trend with ' + nm_param)
         ax1.set_xlim(np.min(param[instrument]), np.max(param[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
