@@ -350,7 +350,7 @@ def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_pat
         ax1.errorbar(tim[instrument], (fl[instrument]-gp_model)*fac, yerr=fle[instrument]*fac, fmt='.', alpha=0.3)
         #ax1.plot(tim[instrument], transit_model*fac, c='k', zorder=100)
         ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
-        ax1.fill_between(tim[instrument], (model_derr-gp_model)*fac, (model_derr-gp_model)*fac, color='k', alpha=0.3, zorder=100)
+        ax1.fill_between(tim[instrument], (model_derr-gp_model)*fac, (model_uerr-gp_model)*fac, color='k', alpha=0.3, zorder=100)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
