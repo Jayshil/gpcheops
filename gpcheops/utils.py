@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import juliet
 import matplotlib.gridspec as gd
 from astropy.table import Table
+from astropy.io import fits
 import os
 from path import Path
 from glob import glob
@@ -223,3 +224,60 @@ def tau(per, ar, rprs, bb):
     bc = 1/np.sqrt(1 - bb**2)
     xy = ab*bc*rprs/ar
     return xy
+
+
+def pipe_data(f1, bgmin=300):
+    """
+    Function to spit out data products
+    with removing flagged data, hihgh background data etc.
+    from PIPE output files.
+    ------------------------------------------------------
+    Parameters:
+    -----------
+    f1 : str
+        Name (along with location) of the fits file
+    bgmin : int, float
+        Threshold for background; all points with higher backgrounds
+        will be discarded.
+        Default is 300 e-/pix
+    -----------
+    return
+    -----------
+    dict :
+        Dictionary containing BJD time, normalized flux with
+        errors on it, roll angle, xc, yc, BG, thermFront2 and
+        principal components of PSF fitting (U0 to Un)
+    """
+    hdul = fits.open(f1)
+    tab = Table.read(hdul[1])
+    # Masking datasets
+    flg = np.asarray(tab['FLAG'])                 # Flagged data
+    msk = np.where(flg==0)[0]                     # Creating a mask to remove flg>0 values
+    # Gathering dataset
+    Us_n = np.array([])
+    Us = []
+    for i in tab.colnames:
+        if i[0] == 'U':
+            Us_n = np.hstack((Us_n, i))
+    for j in range(len(Us_n)):
+        usn = np.asarray(tab[Us_n[j]])[msk]
+        Us.append(usn)
+    tim, flx, flxe = np.asarray(tab['BJD_TIME'])[msk], np.asarray(tab['FLUX'])[msk], np.asarray(tab['FLUXERR'])[msk]
+    roll, xc, yc, bg = np.asarray(tab['ROLL'])[msk], np.asarray(tab['XC'])[msk], np.asarray(tab['YC'])[msk], np.asarray(tab['BG'])[msk]
+    tf2 = np.asarray(tab['thermFront_2'])[msk]
+    # Masking those points with high background values
+    msk1 = np.where(bg<bgmin)[0]
+    tim, flx, flxe, roll, xc, yc, bg, tf2 = tim[msk1], flx[msk1], flxe[msk1], roll[msk1], xc[msk1], yc[msk1], bg[msk1], tf2[msk1]
+    Us1 = []
+    for i in range(len(Us_n)):
+        us1 = Us[i][msk1]
+        Us1.append(us1)
+    # Normalising flux
+    flx, flxe = flx/np.median(flx), flxe/np.median(flx)
+    data = {}
+    data['TIME'], data['FLUX'], data['FLUX_ERR'] = tim, flx, flxe
+    data['ROLL'], data['XC'], data['YC'], data['BG'] = roll, xc, yc, bg
+    data['TF2'] = tf2
+    for i in range(len(Us_n)):
+        data[Us_n[i]] = Us1[i]
+    return data
