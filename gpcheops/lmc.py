@@ -262,7 +262,7 @@ def linear_decorrelation(tim, fl, fle, params, plan_param_priors, t14, lin_prior
             f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
         f1.close()
 
-def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=os.getcwd(), sampler='dynesty', save=True, oot_method='single', verbose=True):
+def linear_gp_decorr(tim, fl, fle, GP_param, plan_params, t14, GP='ExM', out_path=os.getcwd(), sampler='dynesty', save=True, oot_method='single', verbose=True):
     """
     This function do the transit light curve analysis with
     lightcurve decorrelation done against a given parameter.
@@ -337,8 +337,8 @@ def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=o
     ### Indentify the data
     instrument = list(tim.keys())[0]
     tim, fl, fle = tim[instrument], fl[instrument], fle[instrument]
-    nm_param = list(param.keys())[0]
-    param = param[nm_param]
+    nm_param = list(GP_param.keys())[0]
+    GP_param = GP_param[nm_param]
     
     ### Let's first do the out-of-the-transit analysis.
     # Masking in-transit points
@@ -374,17 +374,17 @@ def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=o
         raise Exception('Method to discard out-of-transit/eclipse points can only be "single" or "multi".')
     
     # Out-of-transit data
-    tim_oot, fl_oot, fle_oot, param_oot = {}, {}, {}, {}
+    tim_oot, fl_oot, fle_oot, GP_param_oot = {}, {}, {}, {}
     tim_oot[instrument], fl_oot[instrument], fle_oot[instrument] = tim[mask], fl[mask], fle[mask]
-    param_oot[instrument] = param[mask]
+    GP_param_oot[instrument] = GP_param[mask]
     
     # Sorting the data according to the decorrelating parameter
     tt = Table()
     tt['tim'], tt['fl'], tt['fle'] = tim_oot[instrument], fl_oot[instrument], fle_oot[instrument]
-    tt['param'] = param_oot[instrument]
+    tt['param'] = GP_param_oot[instrument]
     tt.sort('param')
     tim_oot[instrument], fl_oot[instrument], fle_oot[instrument] = tt['tim'], tt['fl'], tt['fle']
-    param_oot[instrument] = tt['param']
+    GP_param_oot[instrument] = tt['param']
     
     ## Defining priors
     # Instrumental parameters
@@ -418,25 +418,25 @@ def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=o
     priors = juliet.utils.generate_priors(params_gp_only, dist_gp_only, hyper_gp_only)
 
     ## Running GP only fit
-    data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=param_oot,\
+    data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=GP_param_oot,\
          out_folder=out_path + '/juliet_'+ instrument +'/juliet_oot_' + nm_param)
     res_gp_only = data.fit(sampler = sampler, n_live_points=500, verbose = verbose)
 
     ### Now it's time for a full fitting
     # All data is already provided
     # Re-making data dictionary
-    tim7, fl7, fle7, param7 = {}, {}, {}, {}
+    tim7, fl7, fle7, GP_param7 = {}, {}, {}, {}
     tim7[instrument], fl7[instrument], fle7[instrument] = tim, fl, fle
-    param7[instrument] = param
-    tim, fl, fle, param = tim7, fl7, fle7, param7
+    GP_param7[instrument] = GP_param
+    tim, fl, fle, GP_param = tim7, fl7, fle7, GP_param7
 
     # Sorting the data according to the decorrelating parameter
     tt1 = Table()
     tt1['tim'], tt1['fl'], tt1['fle'] = tim[instrument], fl[instrument], fle[instrument]
-    tt1['param'] = param[instrument]
+    tt1['param'] = GP_param[instrument]
     tt1.sort('param')
     tim[instrument], fl[instrument], fle[instrument] = tt1['tim'], tt1['fl'], tt1['fle']
-    param[instrument] = tt1['param']
+    GP_param[instrument] = tt1['param']
 
     ## Defining priors
     # We would take instrumental priors from our previous fit
@@ -470,18 +470,17 @@ def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=o
     priors = juliet.utils.generate_priors(params, dist, hyper)
 
     # Running the whole fit
-    data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=param,\
+    data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=GP_param,\
          out_folder=out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param)
     results_full = data_full.fit(sampler = sampler, n_live_points=500, verbose=True)
 
     ### Evaluating the fitted model
     # juliet best fit model
-    model = results_full.lc.evaluate(instrument)
+    model, model_uerr, model_derr, comps = results_full.lc.evaluate(instrument, return_err=True, return_components=True, all_samples=True)
     # juliet best fit gp model
     gp_model = results_full.lc.model[instrument]['GP']
-    # juliet best fit transit model and its errors
+    # juliet best fit transit model
     transit_model = results_full.lc.model[instrument]['deterministic']
-    transit_model_err = results_full.lc.model[instrument]['deterministic_errors']
 
     # Saving the decorrelation plot, if asked
     if save:
@@ -490,19 +489,19 @@ def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=o
 
         # Top panel
         ax1 = plt.subplot(gs[0])
-        ax1.errorbar(param[instrument], (fl[instrument]-transit_model), yerr=fle[instrument], fmt='.', alpha=0.3)
-        ax1.plot(param[instrument], gp_model, c='k', zorder=100)
+        ax1.errorbar(GP_param[instrument], (fl[instrument]-transit_model), yerr=fle[instrument], fmt='.', alpha=0.3)
+        ax1.plot(GP_param[instrument], gp_model, c='k', zorder=100)
         ax1.set_ylabel('Trend with ' + nm_param)
-        ax1.set_xlim(np.min(param[instrument]), np.max(param[instrument]))
+        ax1.set_xlim(np.min(GP_param[instrument]), np.max(GP_param[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
 
         # Bottom panel
         ax2 = plt.subplot(gs[1])
-        ax2.errorbar(param[instrument], (fl[instrument]-gp_model-transit_model)*1e6, yerr=fle[instrument]*1e6, fmt='.', alpha=0.3)
+        ax2.errorbar(GP_param[instrument], (fl[instrument]-gp_model-transit_model)*1e6, yerr=fle[instrument]*1e6, fmt='.', alpha=0.3)
         ax2.axhline(y=0.0, c='black', ls='--')
         ax2.set_ylabel('Residuals (ppm)')
         ax2.set_xlabel(nm_param)
-        ax2.set_xlim(np.min(param[instrument]), np.max(param[instrument]))
+        ax2.set_xlim(np.min(GP_param[instrument]), np.max(GP_param[instrument]))
 
         # Saving the figure
         plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param + '/decorr_' + nm_param +'.png')
@@ -514,9 +513,10 @@ def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=o
     tt3['fl'] = fl[instrument]
     tt3['fle'] = fle[instrument]
     tt3['model'] = model
+    tt3['model_uerr'] = model_uerr
+    tt3['model_derr'] = model_derr
     tt3['gp_mod'] = gp_model
     tt3['tran_mod'] = transit_model
-    tt3['tran_mod_err'] = transit_model_err
 
     tt3.sort('tim')
 
@@ -524,9 +524,10 @@ def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=o
     fl[instrument] = tt3['fl']
     fle[instrument] = tt3['fle']
     model = tt3['model']
+    model_uerr = tt3['model_uerr']
+    model_derr = tt3['model_derr']
     gp_model = tt3['gp_mod']
     transit_model = tt3['tran_mod']
-    transit_model_err = tt3['tran_mod_err']
 
     ## Making lightcurves
     if save:
@@ -538,6 +539,7 @@ def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=o
         ax1 = plt.subplot(gs[0])
         ax1.errorbar(tim[instrument], fl[instrument], yerr=fle[instrument], fmt='.', alpha=0.3)
         ax1.plot(tim[instrument], model, c='k', zorder=100)
+        ax1.fill_between(tim[instrument], model_derr, model_uerr, color='k', alpha=0.3, zorder=100)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
@@ -555,8 +557,6 @@ def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=o
 
         # Only transit model
         fac = 1/np.max(transit_model)#1/(1+np.median(mflux))
-        # Errors in the model
-        umodel, lmodel = transit_model + transit_model_err, transit_model - transit_model_err
 
         # Making a plot
         fig = plt.figure(figsize=(16,9))
@@ -565,7 +565,7 @@ def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=o
         ## 
         dummy_tim, dummy_param = {}, {}
         tt4 = Table()
-        tt4['time'], tt4['param'] = tim[instrument], param[instrument]
+        tt4['time'], tt4['param'] = tim[instrument], GP_param[instrument]
         tt4.sort('param')
         dummy_tim[instrument], dummy_param[instrument] = tt4['time'], tt4['param']
 
@@ -573,7 +573,7 @@ def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=o
         #gp2 = np.linspace(np.min(dummy_param[instrument]), np.max(dummy_param[instrument]), 1000)
         cs = CubicSpline(dummy_tim[instrument], dummy_param[instrument])
         gp2 = cs(t2)
-        model_res = results_full.lc.evaluate(instrument, t=t2, GPregressors=gp2)
+        model_res, model_res_uerr, model_res_derr, comps_res = results_full.lc.evaluate(instrument, t=t2, GPregressors=gp2 , return_err=True, return_components=True, all_samples=True)
         trans_model = results_full.lc.model[instrument]['deterministic']
 
         tt5 = Table()
@@ -587,7 +587,7 @@ def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=o
         ax1.errorbar(tim[instrument], (fl[instrument]-gp_model)*fac, yerr=fle[instrument]*fac, fmt='.', alpha=0.3)
         #ax1.plot(tim[instrument], transit_model*fac, c='k', zorder=100)
         ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
-        #ax1.fill_between(tim[instrument], umodel*fac, lmodel*fac, color='red', alpha=0.7, zorder=5)
+        ax1.fill_between(tim[instrument], (model_res_derr-trans_model)*fac, (model_res_uerr-trans_model)*fac, color='k', alpha=0.3, zorder=100)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
@@ -610,10 +610,12 @@ def linear_gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=o
 
     ## Decorrelating!!
     if save:
-        tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument]*fac
+        tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument]
+        err11 = (model_uerr-model_derr)/2
+        fle9 = (np.sqrt((err11**2) + (fle1**2)))*fac
         f1 = open(out_path + '/juliet_'+ instrument +'/juliet_full_' + nm_param + '/' + nm_param + '_decorrelated_photometry.dat','w')
         for i in range(len(tim[instrument])):
-            f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
+            f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle9[i]) + '\n')
         f1.close()
 
     return results_full.posteriors['lnZ']
