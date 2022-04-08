@@ -495,6 +495,7 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
         if dist_lin[i] != 'fixed':
             post2 = res_gp_only.posteriors['posterior_samples'][par_lin[i]]
             mu, sig = np.median(post2), np.std(post2)
+            dist_lin[i] = 'truncatednormal'
             hyper_lin[i] = [mu, sig, hyper_lin[i][0], hyper_lin[i][1]]
     # Same goes for mflux and sigma_w
     # For sigma_w_CHEOPS
@@ -541,7 +542,7 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
         ax1 = plt.subplot(gs[0])
         ax1.errorbar(GP_param[instrument], (fl[instrument]-transit_model), yerr=fle[instrument], fmt='.', alpha=0.3)
         ax1.plot(GP_param[instrument], gp_model, c='k', zorder=100)
-        ax1.fill_between(GP_param[instrument], model_derr-trans_model, model_uerr-transit_model, color='k', alpha=0.3, zorder=100)
+        ax1.fill_between(GP_param[instrument], model_derr-transit_model, model_uerr-transit_model, color='k', alpha=0.3, zorder=100)
         ax1.set_ylabel('Trend with ' + nm_param)
         ax1.set_xlim(np.min(GP_param[instrument]), np.max(GP_param[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
@@ -568,6 +569,7 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
     tt3['model_derr'] = model_derr
     tt3['gp_mod'] = gp_model
     tt3['tran_mod'] = transit_model
+    tt3['comps_lm'] = comps['lm']
 
     tt3.sort('tim')
 
@@ -579,6 +581,7 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
     model_derr = tt3['model_derr']
     gp_model = tt3['gp_mod']
     transit_model = tt3['tran_mod']
+    comps['lm'] = tt3['comps_lm']
 
     ## Making lightcurves
     if save:
@@ -590,7 +593,7 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
         ax1 = plt.subplot(gs[0])
         ax1.errorbar(tim[instrument], fl[instrument], yerr=fle[instrument], fmt='.', alpha=0.3)
         ax1.plot(tim[instrument], model, c='k', zorder=100)
-        ax1.fill_between(tim[instrument], model_derr, model_uerr, color='k', alpha=0.3, zorder=100)
+        ax1.fill_between(tim[instrument], model_uerr, model_derr, color='k', alpha=0.3, zorder=100)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
@@ -635,10 +638,9 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
 
         # Top panel
         ax1 = plt.subplot(gs[0])
-        ax1.errorbar(tim[instrument], (fl[instrument]-gp_model)*fac, yerr=fle[instrument]*fac, fmt='.', alpha=0.3)
+        ax1.errorbar(tim[instrument], (fl[instrument]-gp_model-comps['lm'])*fac, yerr=fle[instrument]*fac, fmt='.', alpha=0.3)
         #ax1.plot(tim[instrument], transit_model*fac, c='k', zorder=100)
         ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
-        ax1.fill_between(tim[instrument], (model_res_derr-trans_model)*fac, (model_res_uerr-trans_model)*fac, color='k', alpha=0.3, zorder=100)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
