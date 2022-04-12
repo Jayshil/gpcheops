@@ -4,12 +4,6 @@ import juliet
 import matplotlib.gridspec as gd
 from astropy.table import Table
 import os
-from path import Path
-from glob import glob
-import pickle
-from scipy.interpolate import CubicSpline
-import corner
-from matplotlib.gridspec import GridSpec
 
 def roll_parameters(roll, degree):
     ab = np.zeros(len(roll))
@@ -461,7 +455,7 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
 
     ## Running GP only fit
     data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=GP_param_oot,\
-         out_folder=out_path + '/juliet_'+ instrument +'/juliet_oot_lin-' + nm_param)
+         linear_regressors_lc=lin_param_oot, out_folder=out_path + '/juliet_'+ instrument +'/juliet_oot_lin-' + nm_param)
     res_gp_only = data.fit(sampler = sampler, n_live_points=500, verbose = verbose)
 
     ### Now it's time for a full fitting
@@ -522,7 +516,7 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
 
     # Running the whole fit
     data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=GP_param,\
-         out_folder=out_path + '/juliet_'+ instrument +'/juliet_full_lin-' + nm_param)
+         linear_regressors_lc=lin_params, out_folder=out_path + '/juliet_'+ instrument +'/juliet_full_lin-' + nm_param)
     results_full = data_full.fit(sampler = sampler, n_live_points=500, verbose=True)
 
     ### Evaluating the fitted model
@@ -610,44 +604,23 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
         plt.close(fig)
 
         # Only transit model
-        fac = 1/np.max(transit_model)#1/(1+np.median(mflux))
+        fac = 1/np.max(model-gp_model-comps['lm'])#1/(1+np.median(mflux))
 
         # Making a plot
         fig = plt.figure(figsize=(16,9))
         gs = gd.GridSpec(2,1, height_ratios=[2,1])
 
-        ## 
-        dummy_tim, dummy_param = {}, {}
-        tt4 = Table()
-        tt4['time'], tt4['param'] = tim[instrument], GP_param[instrument]
-        tt4.sort('param')
-        dummy_tim[instrument], dummy_param[instrument] = tt4['time'], tt4['param']
-
-        t2 = np.linspace(np.min(dummy_tim[instrument]), np.max(dummy_tim[instrument]), 10000)
-        #gp2 = np.linspace(np.min(dummy_param[instrument]), np.max(dummy_param[instrument]), 1000)
-        cs = CubicSpline(dummy_tim[instrument], dummy_param[instrument])
-        gp2 = cs(t2)
-        model_res, model_res_uerr, model_res_derr, comps_res = results_full.lc.evaluate(instrument, t=t2, GPregressors=gp2 , return_err=True, return_components=True, all_samples=True)
-        trans_model = results_full.lc.model[instrument]['deterministic']
-
-        tt5 = Table()
-        tt5['time'], tt5['param'], tt5['transit_model'] = t2, gp2, trans_model
-        tt5.sort('time')
-        t2, gp2, trans_model = tt5['time'], tt5['param'], tt5['transit_model']
-        fac1 = 1/np.max(trans_model)
-
         # Top panel
         ax1 = plt.subplot(gs[0])
         ax1.errorbar(tim[instrument], (fl[instrument]-gp_model-comps['lm'])*fac, yerr=fle[instrument]*fac, fmt='.', alpha=0.3)
-        #ax1.plot(tim[instrument], transit_model*fac, c='k', zorder=100)
-        ax1.plot(t2, trans_model*fac1, c='k', zorder=100)
+        ax1.plot(tim[instrument], (model-gp_model-comps['lm'])*fac, c='k', zorder=100)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
         ax1.xaxis.set_major_formatter(plt.NullFormatter())
 
         # Bottom panel
         ax2 = plt.subplot(gs[1])
-        ax2.errorbar(tim[instrument], (fl[instrument]-gp_model-transit_model)*1e6*fac, yerr=fle[instrument]*fac*1e6, fmt='.', alpha=0.3)
+        ax2.errorbar(tim[instrument], (fl[instrument]-model)*1e6*fac, yerr=fle[instrument]*1e6*fac, fmt='.', alpha=0.3)
         ax2.axhline(y=0.0, c='black', ls='--')
         ax2.set_ylabel('Residuals (ppm)')
         ax2.set_xlabel('Time (BJD)')
@@ -663,7 +636,7 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
 
     ## Decorrelating!!
     if save:
-        tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument]
+        tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model-comps['lm'])*fac, fle[instrument]
         err11 = (model_uerr-model_derr)/2
         fle9 = (np.sqrt((err11**2) + (fle1**2)))*fac
         f1 = open(out_path + '/juliet_'+ instrument +'/juliet_full_lin-' + nm_param + '/' + nm_param + '-lin_decorrelated_photometry.dat','w')
