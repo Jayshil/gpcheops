@@ -140,3 +140,5 @@ dmypy.json
 gpcheops/test2.py
 gpcheops/test3.py
 gpcheops/test4.py
+gpcheops/lc.dat
+gpcheops/params.dat
