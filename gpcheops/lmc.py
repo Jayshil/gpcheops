@@ -225,9 +225,14 @@ def linear_decorrelation(tim, fl, fle, params, plan_param_priors, t14, lin_prior
         fig = plt.figure(figsize=(16,9))
         gs = gd.GridSpec(2,1, height_ratios=[2,1])
 
+        # Errors in flux
+        mods_err = (model_uerr-model_derr)/2
+        flxe = fle_full[instrument]
+        fl_errs = np.sqrt((mods_err**2) + (flxe**2))
+
         # Top panel
         ax1 = plt.subplot(gs[0])
-        ax1.errorbar(tim_full[instrument], (fl_full[instrument]-comps['lm']) - oot_flux + 1, yerr=fle_full[instrument], fmt='.', alpha=0.3)
+        ax1.errorbar(tim_full[instrument], (fl_full[instrument]-comps['lm']) - oot_flux + 1, yerr=fl_errs, fmt='.', alpha=0.3)
         ax1.plot(tim_full[instrument], (model-comps['lm']) - oot_flux + 1, c='k', zorder=100)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim_full[instrument]), np.max(tim_full[instrument]))
@@ -235,7 +240,7 @@ def linear_decorrelation(tim, fl, fle, params, plan_param_priors, t14, lin_prior
 
         # Bottom panel
         ax2 = plt.subplot(gs[1])
-        ax2.errorbar(tim_full[instrument], (fl_full[instrument]-model)*1e6, yerr=fle_full[instrument]*1e6, fmt='.', alpha=0.3)
+        ax2.errorbar(tim_full[instrument], (fl_full[instrument]-model)*1e6, yerr=fl_errs*1e6, fmt='.', alpha=0.3)
         ax2.axhline(y=0.0, c='black', ls='--', zorder=10)
         ax2.set_ylabel('Residuals (ppm)')
         ax2.set_xlabel('Time (BJD)')
@@ -250,7 +255,7 @@ def linear_decorrelation(tim, fl, fle, params, plan_param_priors, t14, lin_prior
         plt.close(fig)
 
         # Saving the decorrelated photometry:
-        tim1, fl1, fle1 = tim_full[instrument], fl_full[instrument]-comps['lm']-oot_flux+1, fle_full[instrument]
+        tim1, fl1, fle1 = tim_full[instrument], fl_full[instrument]-comps['lm']-oot_flux+1, fl_errs
         f1 = open(out_path + '/juliet_'+ instrument +'/juliet_full/LINEAR_decorrelated_photometry.dat', 'w')
         for i in range(len(tim1)):
             f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
@@ -610,9 +615,14 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
         fig = plt.figure(figsize=(16,9))
         gs = gd.GridSpec(2,1, height_ratios=[2,1])
 
+        # Computing errors in flux
+        mods_err = (model_uerr-model_derr)/2
+        flxe = fle[instrument]
+        flx_errs = np.sqrt((mods_err**2) + (flxe**2))
+
         # Top panel
         ax1 = plt.subplot(gs[0])
-        ax1.errorbar(tim[instrument], (fl[instrument]-gp_model-comps['lm'])*fac, yerr=fle[instrument]*fac, fmt='.', alpha=0.3)
+        ax1.errorbar(tim[instrument], (fl[instrument]-gp_model-comps['lm'])*fac, yerr=flx_errs*fac, fmt='.', alpha=0.3)
         ax1.plot(tim[instrument], (model-gp_model-comps['lm'])*fac, c='k', zorder=100)
         ax1.set_ylabel('Relative Flux')
         ax1.set_xlim(np.min(tim[instrument]), np.max(tim[instrument]))
@@ -620,7 +630,7 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
 
         # Bottom panel
         ax2 = plt.subplot(gs[1])
-        ax2.errorbar(tim[instrument], (fl[instrument]-model)*1e6*fac, yerr=fle[instrument]*1e6*fac, fmt='.', alpha=0.3)
+        ax2.errorbar(tim[instrument], (fl[instrument]-model)*1e6*fac, yerr=flx_errs*1e6*fac, fmt='.', alpha=0.3)
         ax2.axhline(y=0.0, c='black', ls='--')
         ax2.set_ylabel('Residuals (ppm)')
         ax2.set_xlabel('Time (BJD)')
@@ -636,12 +646,10 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
 
     ## Decorrelating!!
     if save:
-        tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model-comps['lm'])*fac, fle[instrument]
-        err11 = (model_uerr-model_derr)/2
-        fle9 = (np.sqrt((err11**2) + (fle1**2)))*fac
+        tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model-comps['lm'])*fac, flx_errs
         f1 = open(out_path + '/juliet_'+ instrument +'/juliet_full_lin-' + nm_param + '/' + nm_param + '-lin_decorrelated_photometry.dat','w')
         for i in range(len(tim[instrument])):
-            f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle9[i]) + '\n')
+            f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
         f1.close()
 
     return results_full.posteriors['lnZ']
