@@ -261,7 +261,7 @@ def linear_decorrelation(tim, fl, fle, params, plan_param_priors, t14, lin_prior
             f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
         f1.close()
 
-def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_priors=None, GP='ExM', out_path=os.getcwd(), sampler='dynesty', save=True, oot_method='single', verbose=True):
+def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_priors=None, GP='ExM', out_path=os.getcwd(), sampler='dynesty', save=True, oot_method='single', nthreads=None, verbose=True):
     """
     This function do the transit light curve analysis with
     lightcurve decorrelation done against a given parameter.
@@ -318,6 +318,9 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
                             out of this time. Best to use for single transit/eclipse.
         another option is multi -- which uses phase-space to discard out-of-transit/eclipse
                                    points. Can be used with single/multiple transit/eclipse events.
+    nthreads : int
+        Number of threads to be used when using dynesty
+        Default is None.
     verbose : bool
         boolean on whether to print progress of analysis
         default is true
@@ -461,7 +464,10 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
     ## Running GP only fit
     data = juliet.load(priors=priors, t_lc=tim_oot, y_lc=fl_oot, yerr_lc=fle_oot, GP_regressors_lc=GP_param_oot,\
          linear_regressors_lc=lin_param_oot, out_folder=out_path + '/juliet_'+ instrument +'/juliet_oot_lin-' + nm_param)
-    res_gp_only = data.fit(sampler = sampler, n_live_points=500, verbose = verbose)
+    if sampler=='dynamic_dynesty' or sampler=='dynamic dynesty':
+        res_gp_only = data.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads, verbose=True)
+    else:
+        res_gp_only = data.fit(sampler = sampler, n_live_points=500, nthreads=nthreads, verbose = verbose)
 
     ### Now it's time for a full fitting
     # All data is already provided
@@ -522,7 +528,10 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
     # Running the whole fit
     data_full = juliet.load(priors=priors, t_lc=tim, y_lc=fl, yerr_lc=fle, GP_regressors_lc=GP_param,\
          linear_regressors_lc=lin_params, out_folder=out_path + '/juliet_'+ instrument +'/juliet_full_lin-' + nm_param)
-    results_full = data_full.fit(sampler = sampler, n_live_points=500, verbose=True)
+    if sampler == 'dynamic_dynesty' or sampler == 'dynamic dynesty':
+        results_full = data_full.fit(sampler = 'dynamic_dynesty', bound = 'single', n_effective = 100, use_stop = False, nthreads = nthreads, verbose=True)
+    else:
+        results_full = data_full.fit(sampler = sampler, n_live_points=500, nthreads=nthreads, verbose=True)
 
     ### Evaluating the fitted model
     # juliet best fit model
