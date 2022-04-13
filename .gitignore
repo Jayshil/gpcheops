@@ -142,3 +142,5 @@ gpcheops/test3.py
 gpcheops/test4.py
 gpcheops/lc.dat
 gpcheops/params.dat
+
+*.DS_Store
