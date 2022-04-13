@@ -10,7 +10,6 @@ import pickle
 from scipy.interpolate import CubicSpline
 import corner
 from matplotlib.gridspec import GridSpec
-from sympy import re
 
 
 def single_param_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=os.getcwd(), sampler='dynesty', save=True, oot_method='single', nthreads=None, verbose=True):
