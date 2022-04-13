@@ -176,6 +176,7 @@ def gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=os.getcw
         res_gp_only = data.fit(sampler = sampler, n_live_points=500, nthreads=nthreads, verbose = verbose)
 
     results_full = res_gp_only
+    tim, fl, fle, param = tim_oot, fl_oot, fle_oot, param_oot
 
     ### Evaluating the fitted model
     # juliet best fit model
@@ -674,6 +675,7 @@ def linear_gp(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_priors=N
         res_gp_only = data.fit(sampler = sampler, n_live_points=500, nthreads=nthreads, verbose = verbose)
 
     results_full = res_gp_only
+    tim, fl, fle, GP_param = tim_oot, fl_oot, fle_oot, GP_param_oot
 
     ### Evaluating the fitted model
     # juliet best fit model
