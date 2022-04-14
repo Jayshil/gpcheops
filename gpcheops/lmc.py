@@ -247,11 +247,11 @@ def linear_decorrelation(tim, fl, fle, params, plan_param_priors, t14, lin_prior
         ax2.set_xlim(np.min(tim_full[instrument]), np.max(tim_full[instrument]))
 
         if transit:
-            plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full/transit_model.png')
+            plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full/transit_model_' + instrument + '.png')
         elif eclipse:
-            plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full/eclipse_model.png')
+            plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full/eclipse_model_' + instrument + '.png')
         else:
-            plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full/transit_eclipse_model.png')
+            plt.savefig(out_path + '/juliet_'+ instrument +'/juliet_full/transit_eclipse_model_' + instrument + '.png')
         plt.close(fig)
 
         # Saving the decorrelated photometry:
@@ -655,7 +655,7 @@ def linear_gp_decorr(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_p
 
     ## Decorrelating!!
     if save:
-        tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model-comps['lm'])*fac, flx_errs
+        tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model-comps['lm'])*fac, flx_errs*fac
         f1 = open(out_path + '/juliet_'+ instrument +'/juliet_full_lin-' + nm_param + '/' + nm_param + '-lin_decorrelated_photometry.dat','w')
         for i in range(len(tim[instrument])):
             f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
