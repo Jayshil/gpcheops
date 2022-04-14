@@ -269,12 +269,12 @@ def gp_decorr(tim, fl, fle, param, plan_params, t14, GP='ExM', out_path=os.getcw
     fac = 1/np.max(transit_model)
 
     ## Decorrelating!!
-    tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument]
+    tim1, fl1, fle1, resid1 = tim[instrument], (fl[instrument]-gp_model)*fac, fle[instrument], (fl[instrument]-model)*1e6
     err7 = (model_uerr-model_derr)/2
     fle2 = (np.sqrt((fle1**2) + (err7**2)))*fac
     f1 = open(out_path + '/juliet_'+ instrument +'/juliet_' + nm_param + '/' + nm_param + '_decorrelated_photometry.dat','w')
     for i in range(len(tim[instrument])):
-        f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle2[i]) + '\n')
+        f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle2[i]) + '\t' + str(resid1[i]) + '\n')
     f1.close()
 
     return results_full.posteriors['lnZ']
@@ -460,10 +460,12 @@ def linear_decorr(tim, fl, fle, params, plan_param_priors, t14, lin_priors=None,
     plt.close(fig)
 
     # Saving the decorrelated photometry:
-    tim1, fl1, fle1 = tim_full[instrument], fl_full[instrument]-comps['lm']-oot_flux+1, fle_full[instrument]
+    tim1, fl1, fle1, resid1 = tim_full[instrument], fl_full[instrument]-comps['lm']-oot_flux+1, fle_full[instrument], (fl_full[instrument]-model)*1e6
+    err1 = (model_uerr-model_uerr)/2
+    fle2 = np.sqrt((fle1**2) + (err1**2))
     f1 = open(out_path + '/juliet_'+ instrument +'/juliet_lin/LINEAR_decorrelated_photometry.dat', 'w')
     for i in range(len(tim1)):
-        f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
+        f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle2[i]) + '\t' + str(resid1[i]) + '\n')
     f1.close()
 
 def linear_gp(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_priors=None, GP='ExM', out_path=os.getcwd(), sampler='dynesty', oot_method='single', nthreads=None, verbose=True):
@@ -765,10 +767,10 @@ def linear_gp(tim, fl, fle, lin_params, GP_param, plan_params, t14, lin_priors=N
     flx_errs = np.sqrt((mods_err**2) + (flxe**2))
 
     ## Decorrelating!!
-    tim1, fl1, fle1 = tim[instrument], (fl[instrument]-gp_model-comps['lm'])*fac, flx_errs
+    tim1, fl1, fle1, resid1 = tim[instrument], (fl[instrument]-gp_model-comps['lm'])*fac, flx_errs, (fl[instrument]-model)*1e6
     f1 = open(out_path + '/juliet_'+ instrument +'/juliet_lin-' + nm_param + '/' + nm_param + '-lin_decorrelated_photometry.dat','w')
     for i in range(len(tim[instrument])):
-        f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\n')
+        f1.write(str(tim1[i]) + '\t' + str(fl1[i]) + '\t' + str(fle1[i]) + '\t' + str(resid1[i]) + '\n')
     f1.close()
 
     return results_full.posteriors['lnZ']
